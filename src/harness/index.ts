@@ -22,6 +22,11 @@ import * as modernTheme from '../templates/modern.json';
 import * as minimalTheme from '../templates/minimal.json';
 import * as corporateTheme from '../templates/corporate.json';
 import * as creativeTheme from '../templates/creative.json';
+import * as boldTheme from '../templates/bold.json';
+import * as elegantTheme from '../templates/elegant.json';
+import * as gradientTheme from '../templates/gradient.json';
+import * as oceanTheme from '../templates/ocean.json';
+import * as techTheme from '../templates/tech.json';
 
 const log = logger.child('SlideHarness');
 
@@ -30,6 +35,11 @@ const THEMES: Record<string, SlideTheme> = {
   minimal: minimalTheme as unknown as SlideTheme,
   corporate: corporateTheme as unknown as SlideTheme,
   creative: creativeTheme as unknown as SlideTheme,
+  bold: boldTheme as unknown as SlideTheme,
+  elegant: elegantTheme as unknown as SlideTheme,
+  gradient: gradientTheme as unknown as SlideTheme,
+  ocean: oceanTheme as unknown as SlideTheme,
+  tech: techTheme as unknown as SlideTheme,
 };
 
 export interface HarnessConfig {

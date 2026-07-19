@@ -18,13 +18,13 @@ export interface SlideGuardrailConfig {
 }
 
 const defaultConfig: SlideGuardrailConfig = {
-  maxBulletsPerSlide: 7,
-  minFontSize: 18,
-  maxTextLength: 800,
+  maxBulletsPerSlide: 8,
+  minFontSize: 14,
+  maxTextLength: 5000,
   requiredTitle: true,
-  maxImages: 3,
+  maxImages: 4,
   minTitleLength: 3,
-  maxTitleLength: 100,
+  maxTitleLength: 120,
 };
 
 const log = logger.child('SlideGuardrails');
@@ -61,6 +61,14 @@ export class SlideGuardrails {
     // Bullets validation
     if (content.bullets && content.bullets.length > this.config.maxBulletsPerSlide) {
       errors.push(`Too many bullet points (${content.bullets.length}, max ${this.config.maxBulletsPerSlide})`);
+    }
+
+    if (content.bullets) {
+      content.bullets.forEach((bullet, idx) => {
+        if (bullet.length > 3000) {
+          warnings.push(`Bullet ${idx + 1} is very long (${bullet.length} chars), recommend keeping under 400 chars for slide readability`);
+        }
+      });
     }
 
     // Total text length validation
@@ -124,6 +132,12 @@ export class SlideGuardrails {
       case 'quote':
         if (!content.title && !content.subtitle) {
           warnings.push('Quote layout typically has an attributed quote');
+        }
+        break;
+
+      case 'table':
+        if (!content.table && (!content.bullets || content.bullets.length === 0)) {
+          warnings.push('Table layout should have either table data or bullets');
         }
         break;
 

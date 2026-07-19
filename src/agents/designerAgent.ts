@@ -116,7 +116,10 @@ export class DesignerAgent {
             content: {
               title: plan.title,
               subtitle: plan.subtitle || '',
-              bullets: plan.bullets.length > 0 ? plan.bullets : ['Content placeholder'],
+              bullets: plan.bullets.length > 0 ? plan.bullets : [
+                `**Tổng quan**: Phân tích thông tin chi tiết về ${plan.title}`,
+                '**Giải pháp**: Tối ưu hóa và nâng cao hiệu quả triển khai',
+              ],
               notes: plan.notes,
               layout: plan.layout,
             },

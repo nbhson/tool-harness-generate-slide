@@ -6,6 +6,7 @@ import { ConcurrencyPool } from '../../utils/concurrency';
 import { CircuitBreaker } from '../../utils/circuitBreaker';
 import { RequestCoalescer } from '../../utils/requestCoalescer';
 import { ResponseCache } from '../memory/cache';
+import { SlideExporter } from './slideExporter';
 
 const log = logger.child('ContentGenerator');
 
@@ -198,20 +199,21 @@ export class ContentGenerator {
    * Build outline prompt for a single chunk
    */
   private buildChunkOutlinePrompt(chunk: TextChunk, maxSlides: number): string {
-    // Limit content to avoid token overflow
-    const content = chunk.content.substring(0, 800);
-    
-    return `Create ${maxSlides} presentation slides from this section.
+    // Pass richer content chunk for deep outline context
+    const content = chunk.content.substring(0, 1800);
+
+    return `Create ${maxSlides} detailed presentation slides from this section.
 
 Section: "${chunk.heading || 'Content'}"
 Content:
 ${content}
 
 Respond ONLY with a JSON array (no explanation):
-[{"title":"Slide title","layout":"title-bullets","bullets":["point1","point2"]}]
+[{"title":"Slide title","layout":"title-bullets","bullets":["**Key Header**: Thorough, detailed explanation point with deep technical context..."]}]
 
 Rules:
-- Max 5 bullets per slide, max 10 words each
+- 10-30 comprehensive bullets per slide, 200-500 words each
+- Every bullet MUST start with a bold lead-in title \`**Header**: Full detailed description\`
 - Use JSON format only`;
   }
 
@@ -220,7 +222,17 @@ Rules:
    */
   private extractKeyPoints(text: string): string[] {
     const sentences = text.split(/[.!?\n]+/).filter(s => s.trim().length > 10);
-    return sentences.slice(0, 5).map(s => s.trim());
+    return sentences.slice(0, 15).map(s => {
+      const clean = SlideExporter.cleanMarkdownText(s);
+      if (!clean) return '';
+      const words = clean.split(/\s+/);
+      if (words.length > 3) {
+        const header = words.slice(0, 3).join(' ');
+        const rest = words.slice(3).join(' ');
+        return `**${header}**: ${rest}`;
+      }
+      return clean;
+    }).filter(s => s.length > 0);
   }
 
   /**
@@ -246,9 +258,9 @@ Rules:
   }
 
   private buildOutlinePrompt(topic: string, outline?: string[], maxSlides?: number): string {
-    let prompt = `Create a presentation outline for: "${topic}"
+    let prompt = `You are an executive presentation architect. Create an in-depth, highly detailed presentation outline for: "${topic}"
 
-${maxSlides ? `Maximum ${maxSlides} slides.` : 'Aim for 10-15 slides.'}
+${maxSlides ? `Maximum ${maxSlides} slides.` : 'Aim for 6-12 slides.'}
 `;
 
     if (outline && outline.length > 0) {
@@ -256,27 +268,43 @@ ${maxSlides ? `Maximum ${maxSlides} slides.` : 'Aim for 10-15 slides.'}
     }
 
     prompt += `
-Respond in JSON format with an array of slides:
+Respond in JSON format with an array of slide objects:
 [
   {
-    "title": "Slide title",
-    "layout": "title|title-bullets|two-column|section-break|chart|quote",
-    "bullets": ["point 1", "point 2"],
-    "subtitle": "optional subtitle"
+    "title": "Clear, Engaging Slide Title",
+    "layout": "title | title-bullets | two-column | comparison | section-break | chart | quote",
+    "bullets": ["**Specific Header 1**: Comprehensive, detailed explanation with context, data, or action items (30-50 words)", "**Specific Header 2**: Comprehensive, detailed explanation with context, data, or action items (30-50 words)"],
+    "subtitle": "Informative, context-rich subtitle"
   }
 ]
 
 Rules:
-- First slide should be title layout
-- Include a mix of layouts for visual variety
-- Last slide should be conclusion/thank-you
-- Each slide should have clear, focused content`;
+- Slide 1 must be 'title' layout.
+- Include visual variety: mix title-bullets, two-column, comparison, section-break, quote, and chart layouts. Do NOT use table layout.
+- Final slide should be conclusion/thank-you (layout: 'title').
+- Write content in the same language as the topic (e.g., Vietnamese if topic is in Vietnamese).
+- Each bullet MUST start with a real topic header like \`**Thực tế thị trường**: Chi tiết...\`.
+- NEVER use generic headers like "Điểm quan trọng 1", "Point 1", "Mục 1".
+- NEVER use ASCII box drawing characters (┌, ─, │, └) or pipe table characters (|).`;
     return prompt;
   }
 
   private buildContentPrompt(context: string, plan: SlidePlan): string {
-    return `You are a professional presentation designer. Generate slide content based on the following context and plan.
+    const layoutInstructions: Record<string, string> = {
+      'title': 'Create a high-impact main title and an engaging, informative subtitle. Leave bullets array empty.',
+      'title-bullets': 'Provide 5-7 rich, highly detailed bullet points. EVERY bullet MUST start with a bold key concept header: "**Header**: Thorough explanation with specific technical context, mechanisms, background, or action items (30-60 words per point)".',
+      'two-column': 'Provide 4-6 detailed bullet points structured as two pairs of contrasting or complementary concepts. Format: "**Concept**: Deep, complete explanation (30-50 words)".',
+      'comparison': 'Provide 4-6 detailed bullet points comparing options, solutions, or before/after states. Format: "**Option A / Pros**: Deep, detailed comparative analysis (30-50 words)".',
+      'section-break': 'Provide a bold section title and a brief motivational or summary subtitle. Leave bullets array empty or 2-3 detailed highlights.',
+      'quote': 'Provide an impactful quote as the title or subtitle. Place author or source attribution in subtitle or notes.',
+      'chart': 'Provide 4-5 key data insights starting with bold metrics or labels: "**Metric (+45%)**: Detailed analytical summary of performance impact, timeline, and growth drivers".',
+    };
 
+    const layoutGuide = layoutInstructions[plan.layout] || 'Provide 5-7 clear bullet points starting with bold lead-in headers: "**Header**: Thorough, in-depth explanation (30-50 words)".';
+
+    return `You are an executive presentation content architect. Generate deep, comprehensive slide content based on the context and plan below.
+
+CONTEXT:
 ${context}
 
 SLIDE PLAN:
@@ -284,19 +312,28 @@ SLIDE PLAN:
 - Layout: ${plan.layout}
 - Key points: ${plan.bullets.join('; ')}
 
-Respond in JSON format:
+LAYOUT SPECIFIC INSTRUCTION:
+${layoutGuide}
+
+Respond strictly in valid JSON format:
 {
   "title": "slide title",
-  "subtitle": "optional subtitle",
-  "bullets": ["bullet 1", "bullet 2", ...],
-  "notes": "speaker notes"
+  "subtitle": "informative context-rich subtitle",
+  "bullets": [
+    "**Specific Concept 1**: Comprehensive, thorough explanation sentence providing deep technical background, practical context, and actionable takeaways...",
+    "**Specific Concept 2**: Comprehensive, thorough explanation sentence providing deep technical background, practical context, and actionable takeaways..."
+  ],
+  "notes": "Detailed, comprehensive speaker notes (100-150 words) covering key discussion points, background rationale, and presentation guidance."
 }
 
-Rules:
-- Keep bullets concise (max 15 words each)
-- Max 7 bullets per slide
-- Use clear, professional language
-- Match the language of the topic`;
+Formatting & Quality Rules:
+1. EVERY bullet MUST start with a bold lead-in header formatted as \`**Key Concept**: Full detailed explanation\`.
+2. NEVER use generic headers like "Điểm quan trọng 1", "Điểm quan trọng 2", "Mục 1", "Point 1". Always use real topic concepts.
+3. NEVER output ASCII box drawing characters (┌, ─, │, └, ┘, ┼) or raw pipe borders (|).
+4. Provide DEEP, THOROUGH, and COMPLETE text information for each point (aim for 30-60 words per bullet point). NEVER generate brief 5-10 word fragments.
+5. Include 5-7 detailed bullet points for content slides.
+6. Match the EXACT language of the topic/context (e.g., Vietnamese if context is Vietnamese).
+7. Never output raw markdown code fences or raw text outside the JSON.`;
   }
 
   private async callLLM(prompt: string, onStreamChunk?: (chunk: string) => void): Promise<string> {
@@ -400,7 +437,7 @@ Rules:
    */
   private async extractContent(response: Response, onStreamChunk?: (chunk: string) => void): Promise<string> {
     const text = await response.text();
-    
+
     // Try standard JSON first
     try {
       const data = JSON.parse(text) as any;
@@ -431,7 +468,7 @@ Rules:
     for (const line of lines) {
       const trimmed = line.trim();
       if (!trimmed.startsWith('data:')) continue;
-      
+
       const jsonStr = trimmed.slice(5).trim();
       if (jsonStr === '[DONE]') continue;
 
@@ -462,13 +499,24 @@ Rules:
       const jsonMatch = response.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         const parsed = JSON.parse(jsonMatch[0]);
-        return {
-          title: parsed.title || plan.title,
-          subtitle: parsed.subtitle || plan.subtitle,
-          bullets: Array.isArray(parsed.bullets) ? parsed.bullets : plan.bullets,
+        const cleanTitle = SlideExporter.cleanMarkdownText(parsed.title || plan.title || '');
+        const cleanSubtitle = SlideExporter.cleanMarkdownText(parsed.subtitle || plan.subtitle || '');
+
+        let rawBullets: string[] = Array.isArray(parsed.bullets) && parsed.bullets.length > 0
+          ? parsed.bullets
+          : plan.bullets;
+
+        const cleanedBullets = SlideExporter.sanitizeBullets(rawBullets, cleanTitle);
+
+        const slideContent: SlideContent = {
+          title: cleanTitle,
+          subtitle: cleanSubtitle,
+          bullets: cleanedBullets,
           notes: parsed.notes || plan.notes,
-          layout: plan.layout,
+          layout: (parsed.layout || plan.layout) as any,
         };
+
+        return slideContent;
       }
     } catch (e) {
       log.warn('Failed to parse LLM response as JSON');
@@ -489,13 +537,19 @@ Rules:
         const parsed = JSON.parse(arrayMatch[0]);
         if (Array.isArray(parsed) && parsed.length > 0) {
           return parsed.filter((item: any) => item && typeof item === 'object')
-            .map((item: any) => ({
-              title: item.title || item.slide_title || 'Untitled Slide',
-              layout: item.layout || 'title-bullets',
-              bullets: Array.isArray(item.bullets) ? item.bullets : 
-                       Array.isArray(item.points) ? item.points : [],
-              subtitle: item.subtitle,
-            }));
+            .map((item: any) => {
+              const title = SlideExporter.cleanMarkdownText(item.title || item.slide_title || 'Untitled Slide');
+              return {
+                title,
+                layout: item.layout || 'title-bullets',
+                bullets: SlideExporter.sanitizeBullets(
+                  Array.isArray(item.bullets) ? item.bullets :
+                    Array.isArray(item.points) ? item.points : [],
+                  title
+                ),
+                subtitle: SlideExporter.cleanMarkdownText(item.subtitle || ''),
+              };
+            });
         }
       }
 
@@ -504,12 +558,16 @@ Rules:
       if (objMatch) {
         const parsed = JSON.parse(objMatch[0]);
         if (parsed && typeof parsed === 'object' && (parsed.title || parsed.slide_title)) {
+          const title = SlideExporter.cleanMarkdownText(parsed.title || parsed.slide_title);
           return [{
-            title: parsed.title || parsed.slide_title,
+            title,
             layout: parsed.layout || 'title-bullets',
-            bullets: Array.isArray(parsed.bullets) ? parsed.bullets :
-                     Array.isArray(parsed.points) ? parsed.points : [],
-            subtitle: parsed.subtitle,
+            bullets: SlideExporter.sanitizeBullets(
+              Array.isArray(parsed.bullets) ? parsed.bullets :
+                Array.isArray(parsed.points) ? parsed.points : [],
+              title
+            ),
+            subtitle: SlideExporter.cleanMarkdownText(parsed.subtitle || ''),
           }];
         }
       }
@@ -520,14 +578,32 @@ Rules:
     return [];
   }
 
+  private generateFallbackBullets(title: string): string[] {
+    const isAgenda = /mục lục|agenda|tổng quan|overview|nội dung/i.test(title);
+    if (isAgenda) {
+      return [
+        '**Tổng quan chương trình**: Đặt vấn đề và mục tiêu chính của dự án',
+        '**Phân tích giải pháp**: Chi tiết các thành phần kiến trúc và mô hình hoạt động',
+        '**Đánh giá & Kết luận**: Tóm tắt kết quả đạt được và bài học kinh nghiệm',
+      ];
+    }
+    return [
+      `**Tổng quan**: Phân tích chi tiết và đánh giá toàn diện về ${title}`,
+      '**Giải pháp kỹ thuật**: Tối ưu hóa và nâng cao hiệu năng, độ tin cậy hệ thống',
+      '**Định hướng triển khai**: Quy trình triển khai chuẩn hóa và kế hoạch tiếp theo',
+    ];
+  }
+
   /**
    * Enhanced fallback: uses plan's bullets directly when LLM is unavailable.
    * Plan bullets come from outline LLM call or chunk extraction.
    */
   private generateEnhancedFallback(plan: SlidePlan): SlideContent {
-    const bullets = plan.bullets.length > 0
+    const rawBullets = plan.bullets.length > 0
       ? plan.bullets.slice(0, 7)
-      : ['Add your content here'];
+      : this.generateFallbackBullets(plan.title);
+
+    const bullets = SlideExporter.sanitizeBullets(rawBullets, plan.title);
 
     return {
       title: plan.title,
@@ -539,10 +615,13 @@ Rules:
   }
 
   private generateTemplateContent(plan: SlidePlan): SlideContent {
+    const rawBullets = plan.bullets.length > 0 ? plan.bullets : this.generateFallbackBullets(plan.title);
+    const bullets = SlideExporter.sanitizeBullets(rawBullets, plan.title);
+
     return {
       title: plan.title,
       subtitle: plan.subtitle,
-      bullets: plan.bullets.length > 0 ? plan.bullets : ['Content placeholder'],
+      bullets,
       notes: plan.notes,
       layout: plan.layout,
     };

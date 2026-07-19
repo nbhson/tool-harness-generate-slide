@@ -1,3 +1,9 @@
+export interface SlideTable {
+  headers: string[];
+  rows: string[][];
+  title?: string;
+}
+
 export interface SlideContent {
   title: string;
   subtitle?: string;
@@ -5,6 +11,7 @@ export interface SlideContent {
   notes?: string;
   layout: SlideLayout;
   visuals?: SlideVisuals;
+  table?: SlideTable;
 }
 
 export interface SlideVisuals {
@@ -43,7 +50,8 @@ export type SlideLayout =
   | 'section-break'
   | 'comparison'
   | 'chart'
-  | 'quote';
+  | 'quote'
+  | 'table';
 
 export interface Slide {
   id: string;
