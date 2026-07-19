@@ -8,6 +8,15 @@ import { RequestCoalescer } from '../../utils/requestCoalescer';
 import { ResponseCache } from '../memory/cache';
 import { SlideExporter } from './slideExporter';
 
+// Polyfill for global fetch in Node.js environments
+import fetch, { Headers, Request, Response } from 'node-fetch';
+if (!globalThis.fetch) {
+  globalThis.fetch = fetch;
+  globalThis.Headers = Headers;
+  globalThis.Request = Request;
+  globalThis.Response = Response;
+}
+
 const log = logger.child('ContentGenerator');
 
 export interface SlidePlan {
@@ -372,7 +381,7 @@ Formatting & Quality Rules:
       stream: Boolean(onStreamChunk),
     };
 
-    let response: Response;
+    let response: any;
     try {
       response = await fetch(url, {
         method: 'POST',
@@ -383,7 +392,6 @@ Formatting & Quality Rules:
           ...(this.config.apiKey ? { Authorization: `Bearer ${this.config.apiKey}` } : {}),
         },
         body: JSON.stringify(body),
-        keepalive: true,
       });
     } catch (fetchError) {
       const msg = fetchError instanceof Error ? fetchError.message : String(fetchError);
@@ -413,7 +421,6 @@ Formatting & Quality Rules:
             ...(this.config.apiKey ? { Authorization: `Bearer ${this.config.apiKey}` } : {}),
           },
           body: JSON.stringify(fallbackBody),
-          keepalive: true,
         });
 
         if (!fallbackResponse.ok) {
@@ -435,7 +442,7 @@ Formatting & Quality Rules:
    * Extract content from LLM response.
    * Handles both JSON responses and SSE stream format.
    */
-  private async extractContent(response: Response, onStreamChunk?: (chunk: string) => void): Promise<string> {
+  private async extractContent(response: any, onStreamChunk?: (chunk: string) => void): Promise<string> {
     const text = await response.text();
 
     // Try standard JSON first
