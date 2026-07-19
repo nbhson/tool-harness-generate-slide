@@ -43,7 +43,10 @@ export class DesignerAgent {
    * Design all slides using batch-parallel execution.
    * Each batch runs slides in parallel, context is updated between batches.
    */
-  async designSlides(slidePlans: SlidePlan[]): Promise<DesignerResult> {
+  async designSlides(
+    slidePlans: SlidePlan[],
+    onProgress?: (completed: number, total: number) => void
+  ): Promise<DesignerResult> {
     log.info('Designing slides (parallel batches)...', {
       count: slidePlans.length,
       batchSize: this.batchSize,
@@ -78,8 +81,12 @@ export class DesignerAgent {
       });
 
       // Run batch in parallel
-      const pool = new ConcurrencyPool({ concurrency: this.batchSize });
-      const batchResults = await pool.runBatch(tasks);
+      const pool = new ConcurrencyPool({ concurrency: this.batchSize, adaptive: true });
+      const batchResults = await pool.runBatch(tasks, (batchCompleted) => {
+        if (onProgress) {
+          onProgress(globalOffset + batchCompleted, slidePlans.length);
+        }
+      });
 
       // Process batch results with correct global indices
       for (const result of batchResults) {
@@ -156,7 +163,8 @@ export class DesignerAgent {
     slidePlans: SlidePlan[],
     failedIndices: number[],
     existingSlides: Slide[],
-    feedback?: string[]
+    feedback?: string[],
+    onProgress?: (completed: number, total: number) => void
   ): Promise<DesignerResult> {
     log.info('Redesigning failed slides only...', {
       failedCount: failedIndices.length,
@@ -195,8 +203,10 @@ export class DesignerAgent {
     });
 
     // Run redesign tasks in parallel (no batching needed, usually few slides)
-    const pool = new ConcurrencyPool({ concurrency: this.batchSize });
-    const results = await pool.runBatch(tasks);
+    const pool = new ConcurrencyPool({ concurrency: this.batchSize, adaptive: true });
+    const results = await pool.runBatch(tasks, (completed, total) => {
+      if (onProgress) onProgress(completed, total);
+    });
 
     for (const result of results) {
       if (result.status === 'fulfilled' && result.value) {

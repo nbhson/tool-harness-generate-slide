@@ -1,0 +1,31 @@
+{
+  "name": "bold",
+  "description": "High-contrast editorial magazine style - large typography, asymmetric layouts, bold colors - for marketing, announcements, brand decks",
+  "colors": {
+    "primary": "#FF2D20",
+    "secondary": "#FF6B35",
+    "accent": "#FFD700",
+    "background": "#FFFFFF",
+    "text": "#1A1A1A",
+    "textLight": "#6B7280",
+    "gradient": ["#FF2D20", "#FF6B35"]
+  },
+  "fonts": {
+    "title": "Arial",
+    "body": "Arial",
+    "accent": "Georgia"
+  },
+  "layout": {
+    "width": 13.33,
+    "height": 7.5,
+    "padding": { "top": 0.4, "left": 0.5, "right": 0.5, "bottom": 0.4 },
+    "titlePosition": "left",
+    "bulletStyle": "bold",
+    "slideNumberPosition": "bottom-right",
+    "maxBullets": 5,
+    "oversizedTitle": true,
+    "colorBlock": true,
+    "asymmetricLayout": true,
+    "thickBar": true
+  }
+}

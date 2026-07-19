@@ -1,0 +1,31 @@
+{
+  "name": "elegant",
+  "description": "Sophisticated, refined design - gold accents, serif fonts, luxury brand aesthetic for keynote, awards, high-end presentations",
+  "colors": {
+    "primary": "#1C1C1C",
+    "secondary": "#2D2D2D",
+    "accent": "#C9A96E",
+    "background": "#F5F0EB",
+    "text": "#1C1C1C",
+    "textLight": "#8A8178",
+    "gradient": ["#1C1C1C", "#C9A96E"]
+  },
+  "fonts": {
+    "title": "Georgia",
+    "body": "Georgia",
+    "accent": "Georgia"
+  },
+  "layout": {
+    "width": 13.33,
+    "height": 7.5,
+    "padding": { "top": 0.8, "left": 1.2, "right": 1.2, "bottom": 0.8 },
+    "titlePosition": "center",
+    "bulletStyle": "elegant",
+    "slideNumberPosition": "bottom-center",
+    "maxBullets": 4,
+    "goldAccent": true,
+    "serifFont": true,
+    "widePadding": true,
+    "dividerStyle": "diamond"
+  }
+}

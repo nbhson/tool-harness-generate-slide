@@ -1,0 +1,31 @@
+{
+  "name": "tech",
+  "description": "Dark mode, neon accents, terminal-inspired - for developer conferences, tech talks, product launches, cyber security",
+  "colors": {
+    "primary": "#10B981",
+    "secondary": "#1F2937",
+    "accent": "#00FF88",
+    "background": "#111827",
+    "text": "#F9FAFB",
+    "textLight": "#9CA3AF",
+    "gradient": ["#10B981", "#00FF88"]
+  },
+  "fonts": {
+    "title": "Arial",
+    "body": "Arial",
+    "accent": "Arial"
+  },
+  "layout": {
+    "width": 13.33,
+    "height": 7.5,
+    "padding": { "top": 0.5, "left": 0.8, "right": 0.8, "bottom": 0.5 },
+    "titlePosition": "left",
+    "bulletStyle": "terminal",
+    "slideNumberPosition": "bottom-right",
+    "maxBullets": 5,
+    "monospace": true,
+    "neonAccent": true,
+    "dotGrid": true,
+    "glowEffect": true
+  }
+}

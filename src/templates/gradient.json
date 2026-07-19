@@ -1,0 +1,31 @@
+{
+  "name": "gradient",
+  "description": "Modern gradient-heavy design inspired by Stripe/Linear/Vercel - glass morphism effects, bold gradients, futuristic tech feel",
+  "colors": {
+    "primary": "#6366F1",
+    "secondary": "#8B5CF6",
+    "accent": "#EC4899",
+    "background": "#0F172A",
+    "text": "#F8FAFC",
+    "textLight": "#94A3B8",
+    "gradient": ["#6366F1", "#8B5CF6", "#EC4899"]
+  },
+  "fonts": {
+    "title": "Arial",
+    "body": "Arial",
+    "accent": "Georgia"
+  },
+  "layout": {
+    "width": 13.33,
+    "height": 7.5,
+    "padding": { "top": 0.6, "left": 0.8, "right": 0.8, "bottom": 0.5 },
+    "titlePosition": "left",
+    "bulletStyle": "gradient",
+    "slideNumberPosition": "bottom-right",
+    "maxBullets": 5,
+    "glassStyle": true,
+    "cornerRadius": 0.4,
+    "glowEffect": true,
+    "gradientBar": true
+  }
+}

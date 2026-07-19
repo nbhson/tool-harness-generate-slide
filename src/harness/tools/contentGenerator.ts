@@ -44,13 +44,17 @@ export class ContentGenerator {
     this.cache = new ResponseCache({ ttlMs: 3_600_000, enabled: true });
   }
 
-  async generateSlideContent(context: string, plan: SlidePlan): Promise<SlideContent> {
+  async generateSlideContent(
+    context: string,
+    plan: SlidePlan,
+    onStreamChunk?: (chunk: string) => void
+  ): Promise<SlideContent> {
     log.info(`Generating content for slide: ${plan.title}`);
 
     const prompt = this.buildContentPrompt(context, plan);
 
     try {
-      const response = await this.callLLM(prompt);
+      const response = await this.callLLM(prompt, onStreamChunk);
       const content = this.parseContentResponse(response, plan);
       return content;
     } catch (error) {
@@ -295,25 +299,29 @@ Rules:
 - Match the language of the topic`;
   }
 
-  private async callLLM(prompt: string): Promise<string> {
+  private async callLLM(prompt: string, onStreamChunk?: (chunk: string) => void): Promise<string> {
     // Phase 5: Check cache first
     const cacheKey = ResponseCache.hash(prompt + this.config.model);
     return this.cache.getOrCompute(cacheKey, async () => {
       // Phase 9+11: Execute through circuit breaker + request coalescing
       return this.coalescer.deduplicate(cacheKey, () =>
         this.circuitBreaker.execute(
-          () => this.executeLLMRequest(prompt),
+          () => this.executeLLMRequest(prompt, undefined, onStreamChunk),
           async () => {
             // Circuit open: try fallback model directly
             log.info('Circuit open, trying fallback model directly');
-            return this.executeLLMRequest(prompt, this.config.fallbackModel);
+            return this.executeLLMRequest(prompt, this.config.fallbackModel, onStreamChunk);
           }
         )
       );
     });
   }
 
-  private async executeLLMRequest(prompt: string, overrideModel?: string): Promise<string> {
+  private async executeLLMRequest(
+    prompt: string,
+    overrideModel?: string,
+    onStreamChunk?: (chunk: string) => void
+  ): Promise<string> {
     const url = `${this.config.baseUrl}/v1/chat/completions`;
     const model = overrideModel || this.config.model;
 
@@ -324,7 +332,7 @@ Rules:
       messages: [{ role: 'user', content: prompt }],
       temperature: 0.7,
       max_tokens: 4096,
-      stream: false,
+      stream: Boolean(onStreamChunk),
     };
 
     let response: Response;
@@ -333,9 +341,12 @@ Rules:
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Connection': 'keep-alive',
+          'Keep-Alive': 'timeout=60, max=1000',
           ...(this.config.apiKey ? { Authorization: `Bearer ${this.config.apiKey}` } : {}),
         },
         body: JSON.stringify(body),
+        keepalive: true,
       });
     } catch (fetchError) {
       const msg = fetchError instanceof Error ? fetchError.message : String(fetchError);
@@ -360,9 +371,12 @@ Rules:
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
+            'Connection': 'keep-alive',
+            'Keep-Alive': 'timeout=60, max=1000',
             ...(this.config.apiKey ? { Authorization: `Bearer ${this.config.apiKey}` } : {}),
           },
           body: JSON.stringify(fallbackBody),
+          keepalive: true,
         });
 
         if (!fallbackResponse.ok) {
@@ -370,34 +384,37 @@ Rules:
           throw new Error(`Both models failed. Primary: ${response.status}, Fallback: ${fallbackResponse.status} - ${fbBody}`);
         }
 
-        return await this.extractContent(fallbackResponse);
+        return await this.extractContent(fallbackResponse, onStreamChunk);
       } catch (fbError) {
         if (fbError instanceof Error && fbError.message.startsWith('Both models')) throw fbError;
         throw new Error(`Primary: ${response.status} - ${errorBody}. Fallback error: ${fbError}`);
       }
     }
 
-    return await this.extractContent(response);
+    return await this.extractContent(response, onStreamChunk);
   }
 
   /**
    * Extract content from LLM response.
    * Handles both JSON responses and SSE stream format.
    */
-  private async extractContent(response: Response): Promise<string> {
+  private async extractContent(response: Response, onStreamChunk?: (chunk: string) => void): Promise<string> {
     const text = await response.text();
     
     // Try standard JSON first
     try {
       const data = JSON.parse(text) as any;
       const content = data.choices?.[0]?.message?.content || '';
-      if (content) return content;
+      if (content) {
+        if (onStreamChunk) onStreamChunk(content);
+        return content;
+      }
     } catch {
       // Not JSON - might be SSE stream
     }
 
     // Try SSE stream format: lines like "data: {...}"
-    const content = this.parseSSEStream(text);
+    const content = this.parseSSEStream(text, onStreamChunk);
     if (content) return content;
 
     throw new Error('LLM returned empty or unparseable response');
@@ -407,7 +424,7 @@ Rules:
    * Parse SSE (Server-Sent Events) stream response.
    * Extracts content from lines like: data: {"choices":[{"delta":{"content":"..."}}]}
    */
-  private parseSSEStream(text: string): string {
+  private parseSSEStream(text: string, onStreamChunk?: (chunk: string) => void): string {
     const lines = text.split('\n');
     let content = '';
 
@@ -424,11 +441,13 @@ Rules:
         const delta = event.choices?.[0]?.delta?.content;
         if (delta) {
           content += delta;
+          if (onStreamChunk) onStreamChunk(delta);
         }
         // Non-streaming in SSE format: choices[0].message.content
         const msgContent = event.choices?.[0]?.message?.content;
         if (msgContent) {
           content += msgContent;
+          if (onStreamChunk) onStreamChunk(msgContent);
         }
       } catch {
         // Skip unparseable lines

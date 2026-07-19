@@ -5,6 +5,8 @@ import { logger } from '../../utils/logger';
 import { mkdirSync } from 'fs';
 import { resolve, dirname } from 'path';
 
+import { WorkerPool } from '../../utils/workerPool';
+
 const log = logger.child('SlideExporter');
 
 interface ThemeLayout {
@@ -16,7 +18,31 @@ interface ThemeLayout {
 }
 
 export class SlideExporter {
+  private workerPool?: WorkerPool;
+
+  constructor(options?: { useWorker?: boolean }) {
+    if (options?.useWorker) {
+      this.workerPool = new WorkerPool(2);
+    }
+  }
+
   async exportPPTX(presentation: Presentation, outputPath: string): Promise<string> {
+    if (this.workerPool) {
+      try {
+        log.info('Delegating PPTX export to worker thread...');
+        return await this.workerPool.run({
+          type: 'export-pptx',
+          data: { presentation, outputPath },
+        });
+      } catch (workerErr) {
+        log.warn('Worker export failed, executing on main thread', { error: String(workerErr) });
+      }
+    }
+
+    return this.exportPPTXDirect(presentation, outputPath);
+  }
+
+  async exportPPTXDirect(presentation: Presentation, outputPath: string): Promise<string> {
     log.info('Exporting presentation to PPTX', { outputPath, slideCount: presentation.slides.length });
 
     const pptx = new PptxGenJS();

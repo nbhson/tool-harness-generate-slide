@@ -382,18 +382,24 @@ export class SlideHarness {
   }
 
   /**
-   * Identify which slide indices failed validation from error messages.
-   * Parses error strings like "Slide 3: Too many bullet points"
+   * Identify which slide indices failed validation from error messages or slide state.
+   * Checks slide.isValid as well as parses error strings like "Slide 3: Too many bullet points"
    */
   private identifyFailedSlides(presentation: Presentation, errors: string[]): number[] {
     const failedIndices = new Set<number>();
 
+    // 1. Check slide state directly
+    presentation.slides.forEach((slide, idx) => {
+      if (slide.isValid === false || (slide.validationErrors && slide.validationErrors.length > 0)) {
+        failedIndices.add(idx);
+      }
+    });
+
+    // 2. Parse text error messages
     for (const error of errors) {
-      // Match patterns like "Slide 1:", "Slide 12 ", etc.
-      const match = error.match(/Slide\s+(\d+)/i);
-      if (match) {
+      const matches = error.matchAll(/(?:Slide|slide)\s*#?\s*(\d+)/gi);
+      for (const match of matches) {
         const slideNum = parseInt(match[1], 10);
-        // Convert 1-based to 0-based index
         if (slideNum >= 1 && slideNum <= presentation.slides.length) {
           failedIndices.add(slideNum - 1);
         }
