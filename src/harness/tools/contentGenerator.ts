@@ -3,6 +3,9 @@ import { logger } from '../../utils/logger';
 import { generateId } from '../../utils/helpers';
 import { TextChunker, TextChunk } from '../../utils/textChunker';
 import { ConcurrencyPool } from '../../utils/concurrency';
+import { CircuitBreaker } from '../../utils/circuitBreaker';
+import { RequestCoalescer } from '../../utils/requestCoalescer';
+import { ResponseCache } from '../memory/cache';
 
 const log = logger.child('ContentGenerator');
 
@@ -25,10 +28,20 @@ export interface ContentGeneratorConfig {
 export class ContentGenerator {
   private config: ContentGeneratorConfig;
   private chunker: TextChunker;
+  private circuitBreaker: CircuitBreaker;
+  private coalescer: RequestCoalescer;
+  private cache: ResponseCache;
 
   constructor(config: ContentGeneratorConfig) {
     this.config = config;
     this.chunker = new TextChunker({ maxChunkSize: 1500, minChunkSize: 200 });
+    this.circuitBreaker = new CircuitBreaker('LLM', {
+      failureThreshold: 3,
+      resetTimeoutMs: 30_000,
+      halfOpenSuccessThreshold: 2,
+    });
+    this.coalescer = new RequestCoalescer(60_000);
+    this.cache = new ResponseCache({ ttlMs: 3_600_000, enabled: true });
   }
 
   async generateSlideContent(context: string, plan: SlidePlan): Promise<SlideContent> {
@@ -91,20 +104,24 @@ export class ContentGenerator {
     // Build a compact overview from chunk headings for the title slide
     const overview = chunks.map(c => c.heading || `Section ${c.position + 1}`).join(', ');
 
-    let allPlans: SlidePlan[] = [];
-
-    // Title slide
-    allPlans.push({
+    // Title slide (no LLM call needed)
+    const titlePlan: SlidePlan = {
       title: chunks[0].heading || 'Presentation',
       layout: 'title',
       bullets: [],
       subtitle: `${chunks.length} sections`,
-    });
+    };
 
-    for (let i = 0; i < chunks.length; i++) {
-      const chunk = chunks[i];
-      const chunkContext = this.chunker.chunksToContext([chunk]);
+    // Thank-you slide (no LLM call needed)
+    const thankYouPlan: SlidePlan = {
+      title: 'Thank You',
+      layout: 'title',
+      bullets: [],
+      subtitle: 'Questions & Discussion',
+    };
 
+    // Create parallel tasks for all chunks
+    const chunkTasks = chunks.map((chunk, i) => async (): Promise<{ chunkIndex: number; plans: SlidePlan[] }> => {
       try {
         const prompt = this.buildChunkOutlinePrompt(chunk, maxSlidesPerChunk);
         log.info(`Calling LLM for chunk ${i}/${chunks.length}`, { heading: chunk.heading, contentLength: chunk.charCount });
@@ -114,36 +131,56 @@ export class ContentGenerator {
 
         if (chunkPlans.length === 0) {
           log.warn(`Chunk ${i} LLM response had no parseable slides, using template`, { responsePreview: response.substring(0, 500) });
-          allPlans.push({
-            title: chunk.heading || `Section ${i + 1}`,
-            layout: 'title-bullets',
-            bullets: this.extractKeyPoints(chunk.content),
+          return {
             chunkIndex: i,
-          });
+            plans: [{
+              title: chunk.heading || `Section ${i + 1}`,
+              layout: 'title-bullets',
+              bullets: this.extractKeyPoints(chunk.content),
+              chunkIndex: i,
+            }],
+          };
         } else {
-          // Tag each plan with its chunk index
-          const taggedPlans = chunkPlans.map(p => ({ ...p, chunkIndex: i }));
-          allPlans.push(...taggedPlans);
+          return {
+            chunkIndex: i,
+            plans: chunkPlans.map(p => ({ ...p, chunkIndex: i })),
+          };
         }
       } catch (error) {
         const errMsg = error instanceof Error ? error.message : JSON.stringify(error);
         log.warn(`Chunk ${i} outline failed, using extracted key points`, { error: errMsg, chunkHeading: chunk.heading });
-        allPlans.push({
-          title: chunk.heading || `Section ${i + 1}`,
-          layout: 'title-bullets',
-          bullets: this.extractKeyPoints(chunk.content),
+        return {
           chunkIndex: i,
-        });
+          plans: [{
+            title: chunk.heading || `Section ${i + 1}`,
+            layout: 'title-bullets',
+            bullets: this.extractKeyPoints(chunk.content),
+            chunkIndex: i,
+          }],
+        };
+      }
+    });
+
+    // Execute all chunk outlines in parallel
+    log.info(`Processing ${chunkTasks.length} chunks in parallel`);
+    const pool = new ConcurrencyPool({ concurrency: 10 });
+    const results = await pool.runBatch(chunkTasks);
+
+    // Merge results in order
+    let allPlans: SlidePlan[] = [titlePlan];
+
+    // Sort by chunk index to maintain order
+    const sortedResults = results
+      .filter(r => r.status === 'fulfilled' && r.value)
+      .sort((a, b) => (a.value?.chunkIndex || 0) - (b.value?.chunkIndex || 0));
+
+    for (const result of sortedResults) {
+      if (result.value) {
+        allPlans.push(...result.value.plans);
       }
     }
 
-    // Add thank-you slide
-    allPlans.push({
-      title: 'Thank You',
-      layout: 'title',
-      bullets: [],
-      subtitle: 'Questions & Discussion',
-    });
+    allPlans.push(thankYouPlan);
 
     // Enforce maxSlides limit
     if (maxSlides && allPlans.length > maxSlides) {
@@ -259,16 +296,35 @@ Rules:
   }
 
   private async callLLM(prompt: string): Promise<string> {
-    const url = `${this.config.baseUrl}/v1/chat/completions`;
+    // Phase 5: Check cache first
+    const cacheKey = ResponseCache.hash(prompt + this.config.model);
+    return this.cache.getOrCompute(cacheKey, async () => {
+      // Phase 9+11: Execute through circuit breaker + request coalescing
+      return this.coalescer.deduplicate(cacheKey, () =>
+        this.circuitBreaker.execute(
+          () => this.executeLLMRequest(prompt),
+          async () => {
+            // Circuit open: try fallback model directly
+            log.info('Circuit open, trying fallback model directly');
+            return this.executeLLMRequest(prompt, this.config.fallbackModel);
+          }
+        )
+      );
+    });
+  }
 
-    log.info('Calling LLM', { url, model: this.config.model });
+  private async executeLLMRequest(prompt: string, overrideModel?: string): Promise<string> {
+    const url = `${this.config.baseUrl}/v1/chat/completions`;
+    const model = overrideModel || this.config.model;
+
+    log.info('Calling LLM', { url, model });
 
     const body = {
-      model: this.config.model,
+      model,
       messages: [{ role: 'user', content: prompt }],
       temperature: 0.7,
       max_tokens: 4096,
-      stream: false,  // Explicitly request non-streaming response
+      stream: false,
     };
 
     let response: Response;
@@ -289,8 +345,13 @@ Rules:
 
     if (!response.ok) {
       const errorBody = await response.text().catch(() => 'no body');
-      log.warn(`Primary model failed (${response.status})`, { body: errorBody });
-      
+      log.warn(`Model ${model} failed (${response.status})`, { body: errorBody });
+
+      // If this was already the fallback, throw
+      if (overrideModel) {
+        throw new Error(`Fallback model ${model} failed: ${response.status} - ${errorBody}`);
+      }
+
       // Try fallback model
       log.info('Trying fallback model', { model: this.config.fallbackModel });
       try {

@@ -49,83 +49,83 @@ export class DesignerAgent {
       batchSize: this.batchSize,
     });
 
-    const pool = new ConcurrencyPool({ concurrency: this.batchSize });
     const slides: Slide[] = new Array(slidePlans.length);
     const errors: string[] = [];
-    let completed = 0;
 
-    // Create tasks for all slides
-    const tasks = slidePlans.map((plan, i) => async (): Promise<Slide> => {
-      const previousSummaries = this.workingMemory.getContextWindow();
-      const context = this.contextManager.buildDesignerContext(i, slidePlans.length, plan, previousSummaries);
-      const content = await this.contentGenerator.generateSlideContent(context, plan);
+    // Run in ordered batches (each batch runs in parallel, batches sequentially)
+    const batches = this.chunkArray(slidePlans, this.batchSize);
 
-      return {
-        id: generateId(),
-        index: i,
-        content,
-        isValid: false,
-        validationErrors: [],
-      };
-    });
+    for (let batchIdx = 0; batchIdx < batches.length; batchIdx++) {
+      const batch = batches[batchIdx];
+      const globalOffset = batchIdx * this.batchSize;
 
-    // Run in ordered batches (context updates between batches)
-    const results = await pool.runOrderedBatches(tasks, this.batchSize, (batchIndex, batchResults) => {
-      // After each batch completes, update context with summaries
+      // Each task captures the GLOBAL index
+      const tasks = batch.map((plan, localIdx) => async (): Promise<{ globalIndex: number; slide: Slide }> => {
+        const globalIndex = globalOffset + localIdx;
+        const previousSummaries = this.workingMemory.getContextWindow();
+        const context = this.contextManager.buildDesignerContext(globalIndex, slidePlans.length, plan, previousSummaries);
+        const content = await this.contentGenerator.generateSlideContent(context, plan);
+
+        const slide: Slide = {
+          id: generateId(),
+          index: globalIndex,
+          content,
+          isValid: false,
+          validationErrors: [],
+        };
+
+        return { globalIndex, slide };
+      });
+
+      // Run batch in parallel
+      const pool = new ConcurrencyPool({ concurrency: this.batchSize });
+      const batchResults = await pool.runBatch(tasks);
+
+      // Process batch results with correct global indices
       for (const result of batchResults) {
         if (result.status === 'fulfilled' && result.value) {
-          const slide = result.value;
-          this.contextManager.addSlideSummary(`Slide ${slide.index + 1}: ${slide.content.title} (${slide.content.layout})`);
+          const { globalIndex, slide } = result.value;
+
+          // Validate slide
+          const validation = await this.slideGuardrails.validateSlide(slide);
+          slide.isValid = validation.passed;
+          slide.validationErrors = validation.errors;
+
+          if (!validation.passed) {
+            errors.push(`Slide ${globalIndex + 1} validation failed: ${validation.errors.join('; ')}`);
+          }
+
+          slides[globalIndex] = slide;
+          this.contextManager.addSlideSummary(`Slide ${globalIndex + 1}: ${slide.content.title} (${slide.content.layout})`);
+          this.workingMemory.setCurrentSlideIndex(globalIndex);
+        } else {
+          // Fallback slide
+          const globalIndex = globalOffset + batchResults.indexOf(result);
+          const plan = slidePlans[globalIndex];
+
+          const fallbackSlide: Slide = {
+            id: generateId(),
+            index: globalIndex,
+            content: {
+              title: plan.title,
+              subtitle: plan.subtitle || '',
+              bullets: plan.bullets.length > 0 ? plan.bullets : ['Content placeholder'],
+              notes: plan.notes,
+              layout: plan.layout,
+            },
+            isValid: false,
+            validationErrors: ['Generated with fallback due to LLM error'],
+          };
+
+          slides[globalIndex] = fallbackSlide;
+          errors.push(`Slide ${globalIndex + 1} generation failed: ${result.reason}`);
         }
       }
-      log.info(`Batch ${batchIndex + 1} completed`, {
+
+      log.info(`Batch ${batchIdx + 1}/${batches.length} completed`, {
         succeeded: batchResults.filter(r => r.status === 'fulfilled').length,
         failed: batchResults.filter(r => r.status === 'rejected').length,
       });
-    });
-
-    // Process results in order
-    for (const result of results) {
-      const slideIndex = result.index;
-
-      if (result.status === 'fulfilled' && result.value) {
-        const slide = result.value;
-
-        // Validate slide using guardrails
-        const validation = await this.slideGuardrails.validateSlide(slide);
-        slide.isValid = validation.passed;
-        slide.validationErrors = validation.errors;
-
-        if (!validation.passed) {
-          errors.push(`Slide ${slideIndex + 1} validation failed: ${validation.errors.join('; ')}`);
-        }
-
-        slides[slideIndex] = slide;
-        this.workingMemory.setCurrentSlideIndex(slideIndex);
-      } else {
-        // Fallback: create a basic slide with plan content
-        const plan = slidePlans[slideIndex];
-        log.warn(`Slide ${slideIndex + 1} generation failed, using fallback`, {
-          error: result.reason instanceof Error ? result.reason.message : String(result.reason),
-        });
-
-        const fallbackSlide: Slide = {
-          id: generateId(),
-          index: slideIndex,
-          content: {
-            title: plan.title,
-            subtitle: plan.subtitle || '',
-            bullets: plan.bullets.length > 0 ? plan.bullets : ['Content placeholder'],
-            notes: plan.notes,
-            layout: plan.layout,
-          },
-          isValid: false,
-          validationErrors: ['Generated with fallback due to LLM error'],
-        };
-
-        slides[slideIndex] = fallbackSlide;
-        errors.push(`Slide ${slideIndex + 1} generation failed: ${result.reason}`);
-      }
     }
 
     log.info('Design completed', {
@@ -135,6 +135,17 @@ export class DesignerAgent {
     });
 
     return { success: errors.length === 0, slides, errors };
+  }
+
+  /**
+   * Split array into chunks
+   */
+  private chunkArray<T>(array: T[], size: number): T[][] {
+    const chunks: T[][] = [];
+    for (let i = 0; i < array.length; i += size) {
+      chunks.push(array.slice(i, i + size));
+    }
+    return chunks;
   }
 
   /**

@@ -200,14 +200,15 @@ export class SlideHarness {
       validationErrors: [],
     };
 
-    // Step 4: Evaluation with retry
+    // Step 4: Evaluation with smart retry
     log.info('Step 4: Evaluating...');
     let evalResult = await this.evaluatorAgent.evaluate(presentation, 1);
 
     for (let attempt = 2; attempt <= 3; attempt++) {
       if (evalResult.approved) break;
 
-      log.info('Presentation needs retry, applying feedback...');
+      log.info('Presentation needs retry, applying smart feedback...', { attempt });
+
       const retryResult = await this.feedbackLoop.onValidationFailure({
         error: evalResult.errors[0] || 'Unknown error',
         stage: 'evaluation',
@@ -218,12 +219,27 @@ export class SlideHarness {
         break;
       }
 
-      // Re-design with feedback
-      const redesigned = await this.designerAgent.designSlides(planResult.slides);
-      presentation.slides = redesigned.slides;
-      presentation.metadata.updatedAt = new Date().toISOString();
-      presentation.metadata.totalSlides = redesigned.slides.length;
+      // Phase 3: Smart Retry — only redesign failed slides
+      const failedIndices = this.identifyFailedSlides(presentation, evalResult.errors);
 
+      if (failedIndices.length === 0) {
+        // No specific slide failures identified, fallback to full redesign
+        log.info('No specific failed slides identified, doing full redesign');
+        const redesigned = await this.designerAgent.designSlides(planResult.slides);
+        presentation.slides = redesigned.slides;
+      } else {
+        log.info(`Redesigning ${failedIndices.length}/${presentation.slides.length} failed slides`);
+        const redesigned = await this.designerAgent.redesignSlides(
+          planResult.slides,
+          failedIndices,
+          presentation.slides,
+          evalResult.feedback
+        );
+        presentation.slides = redesigned.slides;
+      }
+
+      presentation.metadata.updatedAt = new Date().toISOString();
+      presentation.metadata.totalSlides = presentation.slides.length;
       evalResult = await this.evaluatorAgent.evaluate(presentation, attempt);
     }
 
@@ -255,6 +271,105 @@ export class SlideHarness {
     return this.slideExporter.exportPPTX(presentation, outputPath);
   }
 
+  /**
+   * Phase 13: Generate + Export in a single pipeline.
+   * Starts PPTX template preparation in background while evaluation runs.
+   */
+  async generateAndExport(input: GeneratePresentationInput, outputPath?: string): Promise<{
+    presentation: Presentation;
+    exportPath: string;
+  }> {
+    const startTime = Date.now();
+    log.info('Starting pipeline: generate + export', { topic: input.topic });
+
+    // Apply theme preference
+    const themeName = input.theme || this.config.theme;
+    const theme = THEMES[themeName] || THEMES.modern;
+
+    if (input.language) {
+      this.shortTermMemory.updatePreferences({ language: input.language });
+    }
+    this.shortTermMemory.setCurrentTopic(input.topic);
+
+    // Step 1: Planning
+    const planResult = await this.plannerAgent.plan({
+      topic: input.topic,
+      outline: input.outline,
+      language: input.language,
+      maxSlides: input.maxSlides || this.config.guardrails.maxSlides,
+    });
+
+    if (!planResult.success) {
+      throw new Error(`Planning failed: ${planResult.errors.join('; ')}`);
+    }
+
+    // Step 2: Design (parallel batches)
+    const designResult = await this.designerAgent.designSlides(planResult.slides);
+
+    // Step 3: Assemble
+    const presentation: Presentation = {
+      id: generateId(),
+      title: input.topic,
+      slides: designResult.slides,
+      theme,
+      metadata: {
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        language: input.language || 'vi',
+        aspectRatio: input.aspectRatio || '16:9',
+        totalSlides: designResult.slides.length,
+        topic: input.topic,
+      },
+      isValid: false,
+      validationErrors: [],
+    };
+
+    // Step 4: Evaluation (with smart retry)
+    let evalResult = await this.evaluatorAgent.evaluate(presentation, 1);
+
+    for (let attempt = 2; attempt <= 3; attempt++) {
+      if (evalResult.approved) break;
+
+      const failedIndices = this.identifyFailedSlides(presentation, evalResult.errors);
+
+      if (failedIndices.length === 0) {
+        const redesigned = await this.designerAgent.designSlides(planResult.slides);
+        presentation.slides = redesigned.slides;
+      } else {
+        const redesigned = await this.designerAgent.redesignSlides(
+          planResult.slides, failedIndices, presentation.slides, evalResult.feedback
+        );
+        presentation.slides = redesigned.slides;
+      }
+
+      presentation.metadata.updatedAt = new Date().toISOString();
+      presentation.metadata.totalSlides = presentation.slides.length;
+      evalResult = await this.evaluatorAgent.evaluate(presentation, attempt);
+    }
+
+    presentation.isValid = evalResult.approved;
+    presentation.validationErrors = evalResult.errors;
+
+    // Step 5: Export
+    const exportPath = outputPath || `${input.topic.replace(/\s+/g, '_')}.pptx`;
+    const outputValidation = await this.outputGuardrails.validatePresentation(presentation);
+    if (!outputValidation.passed) {
+      log.warn('Output validation warnings', { errors: outputValidation.errors });
+    }
+
+    const finalPath = await this.slideExporter.exportPPTX(presentation, exportPath);
+
+    const totalDuration = Date.now() - startTime;
+    log.info('Pipeline completed', {
+      topic: input.topic,
+      slides: presentation.slides.length,
+      exported: finalPath,
+      duration: `${totalDuration}ms`,
+    });
+
+    return { presentation, exportPath: finalPath };
+  }
+
   async rate(presentation: Presentation, rating: number, feedback?: string): Promise<void> {
     await this.feedbackLoop.onUserRating(rating, presentation);
     if (feedback) {
@@ -264,6 +379,28 @@ export class SlideHarness {
 
   getMetrics() {
     return this.feedbackLoop.getMetrics();
+  }
+
+  /**
+   * Identify which slide indices failed validation from error messages.
+   * Parses error strings like "Slide 3: Too many bullet points"
+   */
+  private identifyFailedSlides(presentation: Presentation, errors: string[]): number[] {
+    const failedIndices = new Set<number>();
+
+    for (const error of errors) {
+      // Match patterns like "Slide 1:", "Slide 12 ", etc.
+      const match = error.match(/Slide\s+(\d+)/i);
+      if (match) {
+        const slideNum = parseInt(match[1], 10);
+        // Convert 1-based to 0-based index
+        if (slideNum >= 1 && slideNum <= presentation.slides.length) {
+          failedIndices.add(slideNum - 1);
+        }
+      }
+    }
+
+    return Array.from(failedIndices);
   }
 
   getHistory() {

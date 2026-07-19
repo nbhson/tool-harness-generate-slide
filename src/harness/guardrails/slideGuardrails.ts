@@ -135,12 +135,10 @@ export class SlideGuardrails {
   }
 
   async validateSlides(slides: Slide[]): Promise<{ allPassed: boolean; results: SlideGuardrailResult[] }> {
-    const results: SlideGuardrailResult[] = [];
-
-    for (const slide of slides) {
-      const result = await this.validateSlide(slide);
-      results.push(result);
-    }
+    // Phase 12: Parallel validation
+    const results = await Promise.all(
+      slides.map(slide => this.validateSlide(slide))
+    );
 
     const allPassed = results.every((r) => r.passed);
 
