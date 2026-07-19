@@ -1,0 +1,29 @@
+{
+  "name": "creative",
+  "description": "Bold, vibrant, playful - gradient-heavy, eye-catching, designed to stand out",
+  "colors": {
+    "primary": "#6C63FF",
+    "secondary": "#FF6584",
+    "accent": "#FFD93D",
+    "background": "#1A1A2E",
+    "text": "#FFFFFF",
+    "textLight": "#B8B8D4",
+    "gradient": ["#6C63FF", "#FF6584", "#FFD93D"]
+  },
+  "fonts": {
+    "title": "Arial",
+    "body": "Arial",
+    "accent": "Georgia"
+  },
+  "layout": {
+    "width": 13.33,
+    "height": 7.5,
+    "padding": { "top": 0.6, "left": 0.7, "right": 0.7, "bottom": 0.5 },
+    "titlePosition": "center",
+    "bulletStyle": "emoji",
+    "slideNumberPosition": "bottom-right",
+    "maxBullets": 5,
+    "cardStyle": true,
+    "cornerRadius": 0.3
+  }
+}

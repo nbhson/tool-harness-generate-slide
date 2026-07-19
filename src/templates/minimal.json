@@ -1,0 +1,28 @@
+{
+  "name": "minimal",
+  "description": "Less is more - whitespace-driven, monochrome, elegant simplicity",
+  "colors": {
+    "primary": "#2C2C2C",
+    "secondary": "#555555",
+    "accent": "#E74C3C",
+    "background": "#FAFAFA",
+    "text": "#2C2C2C",
+    "textLight": "#999999",
+    "gradient": []
+  },
+  "fonts": {
+    "title": "Helvetica Neue",
+    "body": "Helvetica Neue",
+    "accent": "Helvetica Neue"
+  },
+  "layout": {
+    "width": 13.33,
+    "height": 7.5,
+    "padding": { "top": 1.2, "left": 1.0, "right": 1.0, "bottom": 1.0 },
+    "titlePosition": "left",
+    "bulletStyle": "none",
+    "slideNumberPosition": "bottom-left",
+    "maxBullets": 4,
+    "notesStyle": "hidden"
+  }
+}

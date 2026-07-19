@@ -1,0 +1,26 @@
+{
+  "name": "modern",
+  "description": "Clean, professional, blue gradient accent - phù hợp pitch deck, startup, tech",
+  "colors": {
+    "primary": "#0066CC",
+    "secondary": "#004999",
+    "accent": "#00AAFF",
+    "background": "#FFFFFF",
+    "text": "#1A1A2E",
+    "textLight": "#666666",
+    "gradient": ["#0066CC", "#00AAFF"]
+  },
+  "fonts": {
+    "title": "Arial",
+    "body": "Arial",
+    "accent": "Georgia"
+  },
+  "layout": {
+    "width": 13.33,
+    "height": 7.5,
+    "padding": { "top": 0.5, "left": 0.6, "right": 0.6, "bottom": 0.5 },
+    "titlePosition": "left",
+    "bulletStyle": "modern",
+    "slideNumberPosition": "bottom-right"
+  }
+}

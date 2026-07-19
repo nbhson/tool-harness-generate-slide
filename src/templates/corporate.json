@@ -1,0 +1,29 @@
+{
+  "name": "corporate",
+  "description": "Trustworthy, formal, structured - suit & tie vibes, navy blue, business presentations",
+  "colors": {
+    "primary": "#1B365D",
+    "secondary": "#2D5F8A",
+    "accent": "#C8A951",
+    "background": "#FFFFFF",
+    "text": "#1B365D",
+    "textLight": "#6B7B8D",
+    "gradient": ["#1B365D", "#2D5F8A"]
+  },
+  "fonts": {
+    "title": "Times New Roman",
+    "body": "Times New Roman",
+    "accent": "Georgia"
+  },
+  "layout": {
+    "width": 13.33,
+    "height": 7.5,
+    "padding": { "top": 0.4, "left": 0.5, "right": 0.5, "bottom": 0.4 },
+    "titlePosition": "center",
+    "bulletStyle": "bullet",
+    "slideNumberPosition": "bottom-center",
+    "headerBar": true,
+    "footerBar": true,
+    "maxBullets": 6
+  }
+}

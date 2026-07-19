@@ -1,0 +1,32 @@
+{
+  "name": "tool-slide-harness",
+  "version": "1.0.0",
+  "description": "> 🎯 Ứng dụng tạo slide presentation được xây dựng bằng nguyên tắc **Harness Engineering** - kiểm soát toàn bộ hệ thống xung quanh AI để đảm bảo chất lượng output ổn định và đáng tin cậy.",
+  "main": "dist/index.js",
+  "bin": {
+    "slide-harness": "dist/index.js"
+  },
+  "scripts": {
+    "dev": "tsx src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "generate": "tsx src/index.ts generate",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "commander": "^15.0.0",
+    "dotenv": "^17.4.2",
+    "pptxgenjs": "^4.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "^26.1.1",
+    "tsx": "^4.23.1",
+    "typescript": "^7.0.2",
+    "vitest": "^4.1.10"
+  }
+}
