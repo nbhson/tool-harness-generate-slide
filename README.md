@@ -403,9 +403,11 @@ const memory = {
 | `minimal` | Apple-like, whitespace-driven | Monochrome + đỏ accent | Helvetica Neue | Plain text, no markers |
 | `corporate` | Boardroom, formal | Navy (#1B365D) + gold (#C8A951) | Times New Roman | Numbered + header/footer bars |
 | `creative` | Bold, playful | Purple/Pink gradient on dark | Arial + Georgia | Emoji prefixes ✨💡🚀 |
+| `elegant` | Luxury, sophisticated | Deep Gold/Black | Playfair Display | Custom bullet markers |
+| `tech` | Cyberpunk, future | Neon Green/Dark | Roboto Mono | Code-style bullets |
 
 ```bash
-# Thử 4 theme khác nhau
+# Thử các theme khác nhau
 npx tsx src/index.ts generate -i "Pitch deck" -t modern -o modern.pptx
 npx tsx src/index.ts generate -i "Pitch deck" -t minimal -o minimal.pptx
 npx tsx src/index.ts generate -i "Pitch deck" -t corporate -o corporate.pptx
@@ -441,6 +443,7 @@ metrics: { successRate, avgGenerationTime, userSatisfaction, retryRate }
 | **Circuit Breaker** | Auto failover to fallback model on failures | High availability |
 | **Parallel Validation** | `Promise.all()` for slide guardrails | Faster validation |
 | **Worker Threads** | Offload CPU-bound tasks (PPTX export) | Non-blocking main thread |
+| **Advanced Layouts** | Support for side-by-side, grid, and mixed content | Better information density |
 
 ```mermaid
 graph LR
