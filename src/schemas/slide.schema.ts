@@ -12,6 +12,16 @@ export interface SlideContent {
   layout: SlideLayout;
   visuals?: SlideVisuals;
   table?: SlideTable;
+  timeline?: TimelineItem[];
+  flowchart?: Flowchart;
+  infographic?: InfographicElement[];
+  stats?: StatItem[];
+  faq?: FAQItem[];
+  testimonials?: TestimonialItem[];
+  pricing?: PricingItem[];
+  code?: CodeBlock;
+  video?: VideoEmbed;
+  imageGrid?: SlideImage[];
 }
 
 export interface SlideVisuals {
@@ -20,6 +30,8 @@ export interface SlideVisuals {
   accentColor?: string;
   images?: SlideImage[];
   chart?: SlideChart;
+  icon?: string;
+  icons?: string[];
 }
 
 export interface SlideImage {
@@ -35,9 +47,100 @@ export interface SlideImage {
 }
 
 export interface SlideChart {
-  type: 'bar' | 'line' | 'pie' | 'area';
+  type: 'bar' | 'line' | 'pie' | 'area' | 'doughnut' | 'radar' | 'scatter';
   data: Record<string, number | string>[];
   title?: string;
+  labels?: string[];
+  colors?: string[];
+}
+
+export interface TimelineItem {
+  date: string;
+  title: string;
+  description: string;
+  icon?: string;
+}
+
+export interface FlowchartNode {
+  id: string;
+  label: string;
+  type?: 'start' | 'end' | 'process' | 'decision' | 'input' | 'output';
+  x?: number;
+  y?: number;
+}
+
+export interface FlowchartEdge {
+  from: string;
+  to: string;
+  label?: string;
+}
+
+export interface Flowchart {
+  nodes: FlowchartNode[];
+  edges: FlowchartEdge[];
+  direction?: 'horizontal' | 'vertical';
+}
+
+export interface InfographicElement {
+  type: 'header' | 'text' | 'image' | 'chart' | 'icon' | 'stat';
+  content: string;
+  position: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  };
+  style?: {
+    color?: string;
+    backgroundColor?: string;
+    fontSize?: number;
+    fontWeight?: string;
+  };
+}
+
+export interface StatItem {
+  value: string | number;
+  label: string;
+  icon?: string;
+  color?: string;
+}
+
+export interface FAQItem {
+  question: string;
+  answer: string;
+}
+
+export interface TestimonialItem {
+  quote: string;
+  author: string;
+  title?: string;
+  company?: string;
+  avatar?: string;
+}
+
+export interface PricingItem {
+  name: string;
+  price: string;
+  period?: string;
+  features: string[];
+  highlighted?: boolean;
+  buttonText?: string;
+}
+
+export interface CodeBlock {
+  language: string;
+  code: string;
+  title?: string;
+  lineNumbers?: boolean;
+}
+
+export interface VideoEmbed {
+  url: string;
+  type: 'youtube' | 'vimeo' | 'mp4' | 'webm';
+  title?: string;
+  poster?: string;
+  autoplay?: boolean;
+  controls?: boolean;
 }
 
 export type SlideLayout =
@@ -51,7 +154,17 @@ export type SlideLayout =
   | 'comparison'
   | 'chart'
   | 'quote'
-  | 'table';
+  | 'table'
+  | 'timeline'
+  | 'flowchart'
+  | 'infographic'
+  | 'stats'
+  | 'image-grid'
+  | 'video'
+  | 'code'
+  | 'faq'
+  | 'testimonial'
+  | 'pricing';
 
 export interface Slide {
   id: string;

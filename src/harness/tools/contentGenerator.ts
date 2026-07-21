@@ -1,20 +1,16 @@
-import { SlideContent, SlideLayout } from '../../schemas/slide.schema';
+import { SlideContent, SlideLayout, SlideTable, TimelineItem, Flowchart, InfographicElement, StatItem, FAQItem, TestimonialItem, PricingItem, CodeBlock, VideoEmbed, SlideImage, SlideChart } from '../../schemas/slide.schema';
 import { logger } from '../../utils/logger';
 import { generateId } from '../../utils/helpers';
 import { TextChunker, TextChunk } from '../../utils/textChunker';
 import { ConcurrencyPool } from '../../utils/concurrency';
 import { CircuitBreaker } from '../../utils/circuitBreaker';
 import { RequestCoalescer } from '../../utils/requestCoalescer';
-import { ResponseCache } from '../memory/cache';
 import { SlideExporter } from './slideExporter';
 
 // Polyfill for global fetch in Node.js environments
-import fetch, { Headers, Request, Response } from 'node-fetch';
+import fetch from 'node-fetch';
 if (!globalThis.fetch) {
-  globalThis.fetch = fetch;
-  globalThis.Headers = Headers;
-  globalThis.Request = Request;
-  globalThis.Response = Response;
+  globalThis.fetch = fetch as any;
 }
 
 const log = logger.child('ContentGenerator');
@@ -40,7 +36,6 @@ export class ContentGenerator {
   private chunker: TextChunker;
   private circuitBreaker: CircuitBreaker;
   private coalescer: RequestCoalescer;
-  private cache: ResponseCache;
 
   constructor(config: ContentGeneratorConfig) {
     this.config = config;
@@ -51,7 +46,6 @@ export class ContentGenerator {
       halfOpenSuccessThreshold: 2,
     });
     this.coalescer = new RequestCoalescer(60_000);
-    this.cache = new ResponseCache({ ttlMs: 3_600_000, enabled: true });
   }
 
   async generateSlideContent(
@@ -201,7 +195,9 @@ export class ContentGenerator {
       allPlans = allPlans.slice(0, maxSlides);
     }
 
-    return allPlans;
+    // Chunk prompts may overuse title-bullets. Enforce a useful visual mix for
+    // long source documents so charts/tables/images actually reach the exporter.
+    return this.ensureOutlineVisualVariety(allPlans);
   }
 
   /**
@@ -217,11 +213,13 @@ Section: "${chunk.heading || 'Content'}"
 Content:
 ${content}
 
-Respond ONLY with a JSON array (no explanation):
-[{"title":"Slide title","layout":"title-bullets","bullets":["**Key Header**: Thorough, detailed explanation point with deep technical context..."]}]
+Respond ONLY with a JSON array (no explanation). Select the layout best suited
+to the content from: title-bullets, two-column, comparison, chart, table,
+timeline, flowchart, stats, image-grid, code.
+[{"title":"Slide title","layout":"chart","bullets":["**Key Header**: Thorough, detailed explanation point with deep technical context..."]}]
 
 Rules:
-- 10-30 comprehensive bullets per slide, 200-500 words each
+- 7-10 comprehensive bullets per slide, 150-300 words each
 - Every bullet MUST start with a bold lead-in title \`**Header**: Full detailed description\`
 - Use JSON format only`;
   }
@@ -266,7 +264,7 @@ Rules:
     return this.chunker.chunksToContext(chunks);
   }
 
-  private buildOutlinePrompt(topic: string, outline?: string[], maxSlides?: number): string {
+   private buildOutlinePrompt(topic: string, outline?: string[], maxSlides?: number): string {
     let prompt = `You are an executive presentation architect. Create an in-depth, highly detailed presentation outline for: "${topic}"
 
 ${maxSlides ? `Maximum ${maxSlides} slides.` : 'Aim for 6-12 slides.'}
@@ -281,7 +279,7 @@ Respond in JSON format with an array of slide objects:
 [
   {
     "title": "Clear, Engaging Slide Title",
-    "layout": "title | title-bullets | two-column | comparison | section-break | chart | quote",
+    "layout": "title | title-bullets | two-column | comparison | section-break | chart | quote | table | timeline | flowchart | infographic | stats | image-grid | video | code | faq | testimonial | pricing",
     "bullets": ["**Specific Header 1**: Comprehensive, detailed explanation with context, data, or action items (30-50 words)", "**Specific Header 2**: Comprehensive, detailed explanation with context, data, or action items (30-50 words)"],
     "subtitle": "Informative, context-rich subtitle"
   }
@@ -289,7 +287,7 @@ Respond in JSON format with an array of slide objects:
 
 Rules:
 - Slide 1 must be 'title' layout.
-- Include visual variety: mix title-bullets, two-column, comparison, section-break, quote, and chart layouts. Do NOT use table layout.
+- Include visual variety: mix title-bullets, two-column, comparison, section-break, quote, chart, timeline, flowchart, infographic, stats, image-grid, video, code, faq, testimonial, and pricing layouts.
 - Final slide should be conclusion/thank-you (layout: 'title').
 - Write content in the same language as the topic (e.g., Vietnamese if topic is in Vietnamese).
 - Each bullet MUST start with a real topic header like \`**Thực tế thị trường**: Chi tiết...\`.
@@ -300,16 +298,30 @@ Rules:
 
   private buildContentPrompt(context: string, plan: SlidePlan): string {
     const layoutInstructions: Record<string, string> = {
-      'title': 'Create a high-impact main title and an engaging, informative subtitle. Leave bullets array empty.',
+      'title': 'Create a high-impact main title and an engaging, informative subtitle. Leave bullets array empty. Respond with: {title, subtitle}',
       'title-bullets': 'Provide 5-7 rich, highly detailed bullet points. EVERY bullet MUST start with a bold key concept header: "**Header**: Thorough explanation with specific technical context, mechanisms, background, or action items (30-60 words per point)".',
       'two-column': 'Provide 4-6 detailed bullet points structured as two pairs of contrasting or complementary concepts. Format: "**Concept**: Deep, complete explanation (30-50 words)".',
       'comparison': 'Provide 4-6 detailed bullet points comparing options, solutions, or before/after states. Format: "**Option A / Pros**: Deep, detailed comparative analysis (30-50 words)".',
       'section-break': 'Provide a bold section title and a brief motivational or summary subtitle. Leave bullets array empty or 2-3 detailed highlights.',
       'quote': 'Provide an impactful quote as the title or subtitle. Place author or source attribution in subtitle or notes.',
-      'chart': 'Provide 4-5 key data insights starting with bold metrics or labels: "**Metric (+45%)**: Detailed analytical summary of performance impact, timeline, and growth drivers".',
+      'chart': 'MUST provide chart object with type, data array, title, labels, and colors. Include 4-5 key data insights in bullets array starting with bold metrics: "**Metric (+45%)**: Detailed analytical summary".',
+      'table': 'MUST provide table object with headers and rows arrays. Include explanatory bullets describing key insights from the table data.',
+      'timeline': 'MUST provide timeline array with date, title, description, and optional icon for each milestone. Format: [{date: "YYYY-MM-DD", title: "Milestone", description: "Detailed description", icon: "calendar"}]',
+      'flowchart': 'MUST provide flowchart object with nodes and edges arrays. Nodes must have id, label, and type (start/end/process/decision/input/output). Edges must have from, to, and optional label. Direction can be horizontal or vertical.',
+      'infographic': 'MUST provide infographic array with elements containing type (header/text/image/chart/icon/stat), content, position (x,y,width,height), and optional style. Create a visually balanced composition.',
+      'stats': 'MUST provide stats array with value, label, optional icon and color for each statistic. Format: [{value: "45%", label: "Growth Rate", icon: "trending-up", color: "#22c55e"}]',
+      'image-grid': 'MUST provide imageGrid array with image objects containing url or base64, alt text, and optional position. Include bullets describing each image.',
+      'video': 'MUST provide video object with url, type (youtube/vimeo/mp4/webm), optional title, poster, autoplay, and controls. Include bullets describing video content and key takeaways.',
+      'code': 'MUST provide code object with language, code content, optional title, and lineNumbers. Include bullets explaining the code and its significance.',
+      'faq': 'MUST provide faq array with question and answer pairs. Format: [{question: "Frequent question", answer: "Detailed answer (30-50 words)"}]',
+      'testimonial': 'MUST provide testimonials array with quote, author, optional title, company, and avatar. Format: [{quote: "Customer quote", author: "Name", title: "Position", company: "Company", avatar: "url"}]',
+      'pricing': 'MUST provide pricing array with name, price, period, features, highlighted, and buttonText. Format: [{name: "Plan Name", price: "$99", period: "/month", features: ["Feature 1", "Feature 2"], highlighted: true, buttonText: "Get Started"}]',
     };
 
     const layoutGuide = layoutInstructions[plan.layout] || 'Provide 5-7 clear bullet points starting with bold lead-in headers: "**Header**: Thorough, in-depth explanation (30-50 words)".';
+    
+    // Get concrete example for visual layouts
+    const example = this.getLayoutExample(plan.layout);
 
     return `You are an executive presentation content architect. Generate deep, comprehensive slide content based on the context and plan below.
 
@@ -323,8 +335,9 @@ SLIDE PLAN:
 
 LAYOUT SPECIFIC INSTRUCTION:
 ${layoutGuide}
+${example}
 
-Respond strictly in valid JSON format:
+Respond strictly in valid JSON format. Include ALL relevant fields for the specified layout:
 {
   "title": "slide title",
   "subtitle": "informative context-rich subtitle",
@@ -333,6 +346,7 @@ Respond strictly in valid JSON format:
     "**Specific Concept 2**: Comprehensive, thorough explanation sentence providing deep technical background, practical context, and actionable takeaways..."
   ],
   "notes": "Detailed, comprehensive speaker notes (100-150 words) covering key discussion points, background rationale, and presentation guidance."
+  ${this.getLayoutSpecificFields(plan.layout)}
 }
 
 Formatting & Quality Rules:
@@ -342,25 +356,148 @@ Formatting & Quality Rules:
 4. Provide DEEP, THOROUGH, and COMPLETE text information for each point (aim for 30-60 words per bullet point). NEVER generate brief 5-10 word fragments.
 5. Include 5-7 detailed bullet points for content slides.
 6. Match the EXACT language of the topic/context (e.g., Vietnamese if context is Vietnamese).
-7. Never output raw markdown code fences or raw text outside the JSON.`;
+7. Never output raw markdown code fences or raw text outside the JSON.
+8. For visual layouts (chart, table, timeline, flowchart, infographic, stats, image-grid, video, code, faq, testimonial, pricing), you MUST include the corresponding data structure - this is MANDATORY.`;
+  }
+
+  private getLayoutSpecificFields(layout: SlideLayout): string {
+    const fields: Record<string, string> = {
+      'chart': ', "chart": {type, data, title, labels, colors}',
+      'table': ', "table": {headers: [], rows: []}',
+      'timeline': ', "timeline": [{date, title, description, icon}]',
+      'flowchart': ', "flowchart": {nodes: [], edges: [], direction}',
+      'infographic': ', "infographic": [{type, content, position, style}]',
+      'stats': ', "stats": [{value, label, icon, color}]',
+      'image-grid': ', "imageGrid": [{url, base64, alt, position}]',
+      'video': ', "video": {url, type, title, poster, autoplay, controls}',
+      'code': ', "code": {language, code, title, lineNumbers}',
+      'faq': ', "faq": [{question, answer}]',
+      'testimonial': ', "testimonials": [{quote, author, title, company, avatar}]',
+      'pricing': ', "pricing": [{name, price, period, features, highlighted, buttonText}]',
+    };
+    return fields[layout] || '';
+  }
+
+  /**
+   * Provide concrete examples for visual layouts to help LLM understand the exact structure
+   */
+  private getLayoutExample(layout: SlideLayout): string {
+    const examples: Record<string, string> = {
+      'chart': `
+EXAMPLE OUTPUT for chart layout:
+{
+  "title": "Revenue Analysis",
+  "subtitle": "Q1-Q4 Performance",
+  "chart": {
+    "type": "bar",
+    "data": [
+      {"label": "Q1", "value": 45},
+      {"label": "Q2", "value": 67},
+      {"label": "Q3", "value": 82},
+      {"label": "Q4", "value": 95}
+    ],
+    "title": "Quarterly Revenue Growth",
+    "labels": ["Q1", "Q2", "Q3", "Q4"],
+    "colors": ["#3B82F6", "#10B981", "#F59E0B", "#EF4444"]
+  },
+  "bullets": [
+    "**Growth Trend**: Revenue increased by 48% from Q1 to Q4, driven by market expansion and product launches",
+    "**Peak Performance**: Q4 achieved highest revenue at $95M, exceeding targets by 15%"
+  ]
+}`,
+      'stats': `
+EXAMPLE OUTPUT for stats layout:
+{
+  "title": "Key Performance Metrics",
+  "stats": [
+    {"value": "99.9%", "label": "System Uptime", "icon": "check-circle", "color": "#10B981"},
+    {"value": "45%", "label": "Growth Rate", "icon": "trending-up", "color": "#3B82F6"},
+    {"value": "<100ms", "label": "Response Time", "icon": "clock", "color": "#F59E0B"},
+    {"value": "10K+", "label": "Active Users", "icon": "users", "color": "#EF4444"}
+  ],
+  "bullets": [
+    "**Reliability**: System maintains 99.9% uptime with robust failover mechanisms",
+    "**Performance**: Average response time under 100ms ensures optimal user experience"
+  ]
+}`,
+      'timeline': `
+EXAMPLE OUTPUT for timeline layout:
+{
+  "title": "Project Roadmap",
+  "timeline": [
+    {"date": "2024-01", "title": "Project Kickoff", "description": "Initial planning and requirements analysis phase", "icon": "calendar"},
+    {"date": "2024-04", "title": "Development", "description": "Core feature implementation and testing", "icon": "code"},
+    {"date": "2024-07", "title": "Launch", "description": "Public release and marketing campaign", "icon": "rocket"},
+    {"date": "2024-10", "title": "Optimization", "description": "Performance tuning and feature enhancements", "icon": "trending-up"}
+  ],
+  "bullets": [
+    "**Phase 1-2**: Foundation and development completed on schedule with all milestones achieved",
+    "**Phase 3-4**: Launch successful, optimization ongoing with 45% performance improvement"
+  ]
+}`,
+      'table': `
+EXAMPLE OUTPUT for table layout:
+{
+  "title": "Technical Comparison",
+  "table": {
+    "headers": ["Feature", "Current", "Proposed", "Improvement"],
+    "rows": [
+      ["Performance", "250ms", "85ms", "+66%"],
+      ["Reliability", "99.5%", "99.9%", "+0.4%"],
+      ["Cost", "$5000/mo", "$3500/mo", "-30%"]
+    ]
+  },
+  "bullets": [
+    "**Performance Gains**: Proposed solution delivers 66% faster response times through optimized architecture",
+    "**Cost Efficiency**: 30% reduction in operational costs while improving reliability metrics"
+  ]
+}`,
+      'flowchart': `
+EXAMPLE OUTPUT for flowchart layout:
+{
+  "title": "Process Flow",
+  "flowchart": {
+    "nodes": [
+      {"id": "start", "label": "Start", "type": "start"},
+      {"id": "input", "label": "Receive Request", "type": "input"},
+      {"id": "validate", "label": "Validate Data", "type": "decision"},
+      {"id": "process", "label": "Process Request", "type": "process"},
+      {"id": "output", "label": "Send Response", "type": "output"},
+      {"id": "end", "label": "End", "type": "end"}
+    ],
+    "edges": [
+      {"from": "start", "to": "input"},
+      {"from": "input", "to": "validate"},
+      {"from": "validate", "to": "process", "label": "Valid"},
+      {"from": "validate", "to": "end", "label": "Invalid"},
+      {"from": "process", "to": "output"},
+      {"from": "output", "to": "end"}
+    ],
+    "direction": "vertical"
+  },
+  "bullets": [
+    "**Validation Layer**: Input validation prevents 95% of invalid requests before processing",
+    "**Error Handling**: Robust error paths ensure graceful degradation and user feedback"
+  ]
+}`,
+    };
+    
+    return examples[layout] || '';
   }
 
   private async callLLM(prompt: string, onStreamChunk?: (chunk: string) => void): Promise<string> {
-    // Phase 5: Check cache first
-    const cacheKey = ResponseCache.hash(prompt + this.config.model);
-    return this.cache.getOrCompute(cacheKey, async () => {
-      // Phase 9+11: Execute through circuit breaker + request coalescing
-      return this.coalescer.deduplicate(cacheKey, () =>
-        this.circuitBreaker.execute(
-          () => this.executeLLMRequest(prompt, undefined, onStreamChunk),
-          async () => {
-            // Circuit open: try fallback model directly
-            log.info('Circuit open, trying fallback model directly');
-            return this.executeLLMRequest(prompt, this.config.fallbackModel, onStreamChunk);
-          }
-        )
-      );
-    });
+    // Execute through circuit breaker + request coalescing (NO CACHE)
+    const requestKey = `${prompt.substring(0, 50)}-${Date.now()}`;
+    return this.coalescer.deduplicate(requestKey, () =>
+      this.circuitBreaker.execute(
+        () => this.executeLLMRequest(prompt, undefined, onStreamChunk),
+        async () => {
+          // Circuit open: try fallback model directly
+          log.info('Circuit open, trying fallback model directly');
+          return this.executeLLMRequest(prompt, this.config.fallbackModel, onStreamChunk);
+        }
+      )
+    );
   }
 
   private async executeLLMRequest(
@@ -520,16 +657,187 @@ Formatting & Quality Rules:
           subtitle: cleanSubtitle,
           bullets: cleanedBullets,
           notes: parsed.notes || plan.notes,
-          layout: (parsed.layout || plan.layout) as any,
+          layout: (parsed.layout || plan.layout) as SlideLayout,
         };
+
+        // Parse layout-specific data
+        if (parsed.chart) {
+          (slideContent as any).chart = this.parseChart(parsed.chart);
+        }
+        if (parsed.table) {
+          (slideContent as any).table = this.parseTable(parsed.table);
+        }
+        if (parsed.timeline) {
+          slideContent.timeline = this.parseTimeline(parsed.timeline);
+        }
+        if (parsed.flowchart) {
+          slideContent.flowchart = this.parseFlowchart(parsed.flowchart);
+        }
+        if (parsed.infographic) {
+          slideContent.infographic = this.parseInfographic(parsed.infographic);
+        }
+        if (parsed.stats) {
+          slideContent.stats = this.parseStats(parsed.stats);
+        }
+        if (parsed.faq) {
+          slideContent.faq = this.parseFAQ(parsed.faq);
+        }
+        if (parsed.testimonials) {
+          slideContent.testimonials = this.parseTestimonials(parsed.testimonials);
+        }
+        if (parsed.pricing) {
+          slideContent.pricing = this.parsePricing(parsed.pricing);
+        }
+        if (parsed.code) {
+          slideContent.code = this.parseCode(parsed.code);
+        }
+        if (parsed.video) {
+          slideContent.video = this.parseVideo(parsed.video);
+        }
+        if (parsed.imageGrid) {
+          slideContent.imageGrid = this.parseImageGrid(parsed.imageGrid);
+        }
+        if (parsed.visuals) {
+          slideContent.visuals = parsed.visuals;
+        }
+
+        // PART 2 OF SOLUTION: Force inject fallback visual data if LLM didn't provide it
+        this.ensureVisualData(slideContent, plan.layout, plan.title);
 
         return slideContent;
       }
     } catch (e) {
-      log.warn('Failed to parse LLM response as JSON');
+      log.warn('Failed to parse LLM response as JSON', { error: e instanceof Error ? e.message : String(e) });
     }
 
     return this.generateTemplateContent(plan);
+  }
+
+  private parseChart(data: any): SlideChart {
+    return {
+      type: (data.type || 'bar') as any,
+      data: data.data || [],
+      title: data.title,
+      labels: data.labels,
+      colors: data.colors,
+    };
+  }
+
+  private parseTable(data: any): { headers: string[]; rows: string[][]; title?: string } {
+    return {
+      headers: data.headers || [],
+      rows: data.rows || [],
+      title: data.title,
+    };
+  }
+
+  private parseTimeline(data: any): TimelineItem[] {
+    if (!Array.isArray(data)) return [];
+    return data.map((item: any) => ({
+      date: item.date || '',
+      title: item.title || '',
+      description: item.description || '',
+      icon: item.icon,
+    }));
+  }
+
+  private parseFlowchart(data: any): Flowchart {
+    return {
+      nodes: (data.nodes || []).map((n: any) => ({
+        id: n.id || '',
+        label: n.label || '',
+        type: n.type,
+        x: n.x,
+        y: n.y,
+      })),
+      edges: (data.edges || []).map((e: any) => ({
+        from: e.from || '',
+        to: e.to || '',
+        label: e.label,
+      })),
+      direction: data.direction,
+    };
+  }
+
+  private parseInfographic(data: any): InfographicElement[] {
+    if (!Array.isArray(data)) return [];
+    return data.map((item: any) => ({
+      type: item.type || 'text',
+      content: item.content || '',
+      position: item.position || { x: 0, y: 0, width: 100, height: 50 },
+      style: item.style,
+    }));
+  }
+
+  private parseStats(data: any): StatItem[] {
+    if (!Array.isArray(data)) return [];
+    return data.map((item: any) => ({
+      value: item.value || '',
+      label: item.label || '',
+      icon: item.icon,
+      color: item.color,
+    }));
+  }
+
+  private parseFAQ(data: any): FAQItem[] {
+    if (!Array.isArray(data)) return [];
+    return data.map((item: any) => ({
+      question: item.question || '',
+      answer: item.answer || '',
+    }));
+  }
+
+  private parseTestimonials(data: any): TestimonialItem[] {
+    if (!Array.isArray(data)) return [];
+    return data.map((item: any) => ({
+      quote: item.quote || '',
+      author: item.author || '',
+      title: item.title,
+      company: item.company,
+      avatar: item.avatar,
+    }));
+  }
+
+  private parsePricing(data: any): PricingItem[] {
+    if (!Array.isArray(data)) return [];
+    return data.map((item: any) => ({
+      name: item.name || '',
+      price: item.price || '',
+      period: item.period,
+      features: item.features || [],
+      highlighted: item.highlighted || false,
+      buttonText: item.buttonText || 'Get Started',
+    }));
+  }
+
+  private parseCode(data: any): CodeBlock {
+    return {
+      language: data.language || 'javascript',
+      code: data.code || '',
+      title: data.title,
+      lineNumbers: data.lineNumbers || true,
+    };
+  }
+
+  private parseVideo(data: any): VideoEmbed {
+    return {
+      url: data.url || '',
+      type: (data.type || 'youtube') as any,
+      title: data.title,
+      poster: data.poster,
+      autoplay: data.autoplay || false,
+      controls: data.controls !== false,
+    };
+  }
+
+  private parseImageGrid(data: any): SlideImage[] {
+    if (!Array.isArray(data)) return [];
+    return data.map((item: any) => ({
+      url: item.url,
+      base64: item.base64,
+      alt: item.alt || '',
+      position: item.position,
+    }));
   }
 
   private parseOutlineResponse(response: string): SlidePlan[] {
@@ -539,9 +847,9 @@ Formatting & Quality Rules:
       cleaned = cleaned.replace(/```json\s*/gi, '').replace(/```\s*/g, '');
 
       // Try to find JSON array
-      const arrayMatch = cleaned.match(/\[[\s\S]*?\]/);
-      if (arrayMatch) {
-        const parsed = JSON.parse(arrayMatch[0]);
+      const arrayJson = this.extractBalancedJson(cleaned, '[', ']');
+      if (arrayJson) {
+        const parsed = JSON.parse(arrayJson);
         if (Array.isArray(parsed) && parsed.length > 0) {
           return parsed.filter((item: any) => item && typeof item === 'object')
             .map((item: any) => {
@@ -561,9 +869,9 @@ Formatting & Quality Rules:
       }
 
       // Try single object (LLM might return one slide instead of array)
-      const objMatch = cleaned.match(/\{[\s\S]*?\}/);
-      if (objMatch) {
-        const parsed = JSON.parse(objMatch[0]);
+      const objectJson = this.extractBalancedJson(cleaned, '{', '}');
+      if (objectJson) {
+        const parsed = JSON.parse(objectJson);
         if (parsed && typeof parsed === 'object' && (parsed.title || parsed.slide_title)) {
           const title = SlideExporter.cleanMarkdownText(parsed.title || parsed.slide_title);
           return [{
@@ -583,6 +891,44 @@ Formatting & Quality Rules:
     }
 
     return [];
+  }
+
+  /** Extract a complete JSON array/object while respecting nesting and strings. */
+  private extractBalancedJson(text: string, open: '[' | '{', close: ']' | '}'): string | undefined {
+    const start = text.indexOf(open);
+    if (start < 0) return undefined;
+    let depth = 0;
+    let inString = false;
+    let escaped = false;
+    for (let i = start; i < text.length; i++) {
+      const char = text[i];
+      if (inString) {
+        if (escaped) escaped = false;
+        else if (char === '\\') escaped = true;
+        else if (char === '"') inString = false;
+        continue;
+      }
+      if (char === '"') inString = true;
+      else if (char === open) depth++;
+      else if (char === close && --depth === 0) return text.slice(start, i + 1);
+    }
+    return undefined;
+  }
+
+  /** Guarantee data-driven and visual slides without changing title slides. */
+  private ensureOutlineVisualVariety(plans: SlidePlan[]): SlidePlan[] {
+    if (plans.length < 6) return plans;
+    const result = plans.map(plan => ({ ...plan }));
+    const desired: SlideLayout[] = ['stats', 'image-grid', 'table', 'flowchart', 'chart', 'timeline'];
+    const candidates = result
+      .map((plan, index) => ({ plan, index }))
+      .filter(({ plan, index }) => index > 0 && plan.layout !== 'title' && plan.layout !== 'section-break');
+
+    desired.forEach((layout, slot) => {
+      const candidate = candidates[Math.floor((slot + 1) * candidates.length / (desired.length + 1))];
+      if (candidate) candidate.plan.layout = layout;
+    });
+    return result;
   }
 
   private generateFallbackBullets(title: string): string[] {
@@ -612,26 +958,429 @@ Formatting & Quality Rules:
 
     const bullets = SlideExporter.sanitizeBullets(rawBullets, plan.title);
 
-    return {
+    const content: SlideContent = {
       title: plan.title,
       subtitle: plan.subtitle || '',
       bullets,
       notes: plan.notes || `Speaker notes for: ${plan.title}`,
       layout: plan.layout,
     };
+
+    // Add fallback data for special layouts
+    this.addLayoutFallbackData(content, plan.layout, plan.title);
+
+    return content;
   }
 
   private generateTemplateContent(plan: SlidePlan): SlideContent {
     const rawBullets = plan.bullets.length > 0 ? plan.bullets : this.generateFallbackBullets(plan.title);
     const bullets = SlideExporter.sanitizeBullets(rawBullets, plan.title);
 
-    return {
+    const content: SlideContent = {
       title: plan.title,
       subtitle: plan.subtitle,
       bullets,
       notes: plan.notes,
       layout: plan.layout,
     };
+
+    // Add fallback data for special layouts
+    this.addLayoutFallbackData(content, plan.layout, plan.title);
+
+    return content;
+  }
+
+  /**
+   * PART 2 OF SOLUTION: Ensure visual data exists for visual layouts
+   * If LLM didn't provide the required visual data structure, inject fallback data
+   */
+  private ensureVisualData(content: SlideContent, layout: SlideLayout, title: string): void {
+    const visualLayouts = ['chart', 'table', 'timeline', 'flowchart', 'infographic', 'stats', 
+                           'image-grid', 'video', 'code', 'faq', 'testimonial', 'pricing'];
+    
+    if (!visualLayouts.includes(layout)) {
+      return; // Not a visual layout, skip
+    }
+
+    let needsFallback = false;
+
+    // Check if visual data is missing for the specific layout
+    switch (layout) {
+      case 'chart':
+        if (!(content as any).chart || !(content as any).chart.data || (content as any).chart.data.length === 0) {
+          needsFallback = true;
+          log.warn(`Chart layout missing chart data for slide "${title}", injecting fallback`);
+        }
+        break;
+      case 'table':
+        if (!(content as any).table || !(content as any).table.rows || (content as any).table.rows.length === 0) {
+          needsFallback = true;
+          log.warn(`Table layout missing table data for slide "${title}", injecting fallback`);
+        }
+        break;
+      case 'timeline':
+        if (!content.timeline || content.timeline.length === 0) {
+          needsFallback = true;
+          log.warn(`Timeline layout missing timeline data for slide "${title}", injecting fallback`);
+        }
+        break;
+      case 'flowchart':
+        if (!content.flowchart || !content.flowchart.nodes || content.flowchart.nodes.length === 0) {
+          needsFallback = true;
+          log.warn(`Flowchart layout missing flowchart data for slide "${title}", injecting fallback`);
+        }
+        break;
+      case 'infographic':
+        if (!content.infographic || content.infographic.length === 0) {
+          needsFallback = true;
+          log.warn(`Infographic layout missing infographic data for slide "${title}", injecting fallback`);
+        }
+        break;
+      case 'stats':
+        if (!content.stats || content.stats.length === 0) {
+          needsFallback = true;
+          log.warn(`Stats layout missing stats data for slide "${title}", injecting fallback`);
+        }
+        break;
+      case 'image-grid':
+        if (!content.imageGrid || content.imageGrid.length === 0) {
+          needsFallback = true;
+          log.warn(`Image-grid layout missing imageGrid data for slide "${title}", injecting fallback`);
+        }
+        break;
+      case 'video':
+        if (!content.video || !content.video.url) {
+          needsFallback = true;
+          log.warn(`Video layout missing video data for slide "${title}", injecting fallback`);
+        }
+        break;
+      case 'code':
+        if (!content.code || !content.code.code) {
+          needsFallback = true;
+          log.warn(`Code layout missing code data for slide "${title}", injecting fallback`);
+        }
+        break;
+      case 'faq':
+        if (!content.faq || content.faq.length === 0) {
+          needsFallback = true;
+          log.warn(`FAQ layout missing faq data for slide "${title}", injecting fallback`);
+        }
+        break;
+      case 'testimonial':
+        if (!content.testimonials || content.testimonials.length === 0) {
+          needsFallback = true;
+          log.warn(`Testimonial layout missing testimonials data for slide "${title}", injecting fallback`);
+        }
+        break;
+      case 'pricing':
+        if (!content.pricing || content.pricing.length === 0) {
+          needsFallback = true;
+          log.warn(`Pricing layout missing pricing data for slide "${title}", injecting fallback`);
+        }
+        break;
+    }
+
+    // Inject fallback data if needed
+    if (needsFallback) {
+      this.addLayoutFallbackData(content, layout, title);
+    }
+  }
+
+  /**
+   * Add fallback data for special layouts when LLM doesn't provide specific content
+   */
+  private addLayoutFallbackData(content: SlideContent, layout: SlideLayout, title: string): void {
+    const isVietnamese = /[àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ]/i.test(title);
+
+    switch (layout) {
+      case 'chart':
+        (content as any).chart = {
+          type: 'bar',
+          data: [
+            { label: isVietnamese ? 'Qúy 1' : 'Q1', value: 45 },
+            { label: isVietnamese ? 'Qúy 2' : 'Q2', value: 67 },
+            { label: isVietnamese ? 'Qúy 3' : 'Q3', value: 82 },
+            { label: isVietnamese ? 'Qúy 4' : 'Q4', value: 95 },
+          ],
+          title: isVietnamese ? 'Doanh thu theo quý' : 'Quarterly Revenue',
+          labels: isVietnamese ? ['Qúy 1', 'Qúy 2', 'Qúy 3', 'Qúy 4'] : ['Q1', 'Q2', 'Q3', 'Q4'],
+          colors: ['#3B82F6', '#10B981', '#F59E0B', '#EF4444'],
+        };
+        break;
+
+      case 'table':
+        (content as any).table = {
+          headers: isVietnamese
+            ? ['STT', 'Tiêu chí', 'Giá trị']
+            : ['No.', 'Criteria', 'Value'],
+          rows: [
+            ['1', isVietnamese ? 'Hiệu suất' : 'Performance', isVietnamese ? '95%' : '95%'],
+            ['2', isVietnamese ? 'Độ tin cậy' : 'Reliability', isVietnamese ? '99.9%' : '99.9%'],
+            ['3', isVietnamese ? 'Thời gian đáp ứng' : 'Response Time', isVietnamese ? '<100ms' : '<100ms'],
+          ],
+          title: isVietnamese ? 'Thông số kỹ thuật' : 'Technical Metrics',
+        };
+        break;
+
+      case 'timeline':
+        content.timeline = [
+          {
+            date: '2024-01',
+            title: isVietnamese ? 'Khởi động dự án' : 'Project Kickoff',
+            description: isVietnamese ? 'Bắt đầu giai đoạn nghiên cứu và phân tích yêu cầu' : 'Began research and requirements analysis phase',
+            icon: 'calendar',
+          },
+          {
+            date: '2024-04',
+            title: isVietnamese ? 'Phát triển' : 'Development',
+            description: isVietnamese ? 'Xây dựng nguyên mẫu và thử nghiệm' : 'Prototype development and testing',
+            icon: 'code',
+          },
+          {
+            date: '2024-07',
+            title: isVietnamese ? 'Triển khai' : 'Deployment',
+            description: isVietnamese ? 'Ra mắt sản phẩm chính thức' : 'Official product launch',
+            icon: 'rocket',
+          },
+          {
+            date: '2024-10',
+            title: isVietnamese ? 'Tối ưu' : 'Optimization',
+            description: isVietnamese ? 'Nâng cấp và tối ưu hiệu năng' : 'Performance optimization and upgrades',
+            icon: 'trending-up',
+          },
+        ];
+        break;
+
+      case 'flowchart':
+        (content as any).flowchart = {
+          nodes: [
+            { id: 'start', label: isVietnamese ? 'Bắt đầu' : 'Start', type: 'start', x: 0, y: 0 },
+            { id: 'input', label: isVietnamese ? 'Nhập liệu' : 'Input Data', type: 'input', x: 0, y: 100 },
+            { id: 'process', label: isVietnamese ? 'Xử lý' : 'Processing', type: 'process', x: 0, y: 200 },
+            { id: 'decision', label: isVietnamese ? 'Kiểm tra' : 'Validation', type: 'decision', x: 0, y: 300 },
+            { id: 'output', label: isVietnamese ? 'Xuất kết quả' : 'Output', type: 'output', x: 0, y: 400 },
+            { id: 'end', label: isVietnamese ? 'Kết thúc' : 'End', type: 'end', x: 0, y: 500 },
+          ],
+          edges: [
+            { from: 'start', to: 'input', label: '' },
+            { from: 'input', to: 'process', label: '' },
+            { from: 'process', to: 'decision', label: '' },
+            { from: 'decision', to: 'output', label: isVietnamese ? 'Hợp lệ' : 'Valid' },
+            { from: 'decision', to: 'end', label: isVietnamese ? 'Không hợp lệ' : 'Invalid' },
+          ],
+          direction: 'vertical',
+        };
+        break;
+
+      case 'infographic':
+        (content as any).infographic = [
+          {
+            type: 'header',
+            content: isVietnamese ? 'Thống kê chính' : 'Key Statistics',
+            position: { x: 0, y: 0, width: 100, height: 10 },
+            style: { fontSize: 24, fontWeight: 'bold', color: '#1F2937' },
+          },
+          {
+            type: 'stat',
+            content: '45%',
+            position: { x: 10, y: 15, width: 25, height: 20 },
+            style: { fontSize: 18, fontWeight: 'bold', color: '#3B82F6', backgroundColor: '#EFF6FF' },
+          },
+          {
+            type: 'stat',
+            content: '67%',
+            position: { x: 40, y: 15, width: 25, height: 20 },
+            style: { fontSize: 18, fontWeight: 'bold', color: '#10B981', backgroundColor: '#ECFDF5' },
+          },
+          {
+            type: 'stat',
+            content: '82%',
+            position: { x: 70, y: 15, width: 25, height: 20 },
+            style: { fontSize: 18, fontWeight: 'bold', color: '#F59E0B', backgroundColor: '#FFEDD5' },
+          },
+          {
+            type: 'text',
+            content: isVietnamese ? 'Tăng trưởng doanh thu theo năm' : 'Year-over-year revenue growth',
+            position: { x: 0, y: 40, width: 100, height: 8 },
+            style: { fontSize: 14, color: '#6B7280' },
+          },
+          {
+            type: 'icon',
+            content: 'trending-up',
+            position: { x: 0, y: 50, width: 100, height: 15 },
+            style: { fontSize: 20, color: '#3B82F6' },
+          },
+        ];
+        break;
+
+      case 'stats':
+        content.stats = [
+          {
+            value: '45%',
+            label: isVietnamese ? 'Tăng trưởng' : 'Growth',
+            icon: 'trending-up',
+            color: '#10B981',
+          },
+          {
+            value: '99.9%',
+            label: isVietnamese ? 'Uptime' : 'Uptime',
+            icon: 'check-circle',
+            color: '#3B82F6',
+          },
+          {
+            value: '<100ms',
+            label: isVietnamese ? 'Đáp ứng' : 'Response Time',
+            icon: 'clock',
+            color: '#F59E0B',
+          },
+          {
+            value: '10K+',
+            label: isVietnamese ? 'Người dùng' : 'Users',
+            icon: 'users',
+            color: '#EF4444',
+          },
+        ];
+        break;
+
+      case 'image-grid':
+        content.imageGrid = [
+          {
+            base64: this.createVisualCardDataUri(title, '#2563EB', '01'),
+            alt: isVietnamese ? 'Hình ảnh 1' : 'Image 1',
+            position: { x: 0, y: 0, width: 30, height: 20 },
+          },
+          {
+            base64: this.createVisualCardDataUri(content.bullets?.[0] || title, '#059669', '02'),
+            alt: isVietnamese ? 'Hình ảnh 2' : 'Image 2',
+            position: { x: 35, y: 0, width: 30, height: 20 },
+          },
+          {
+            base64: this.createVisualCardDataUri(content.bullets?.[1] || title, '#D97706', '03'),
+            alt: isVietnamese ? 'Hình ảnh 3' : 'Image 3',
+            position: { x: 65, y: 0, width: 30, height: 20 },
+          },
+        ];
+        break;
+
+      case 'video':
+        content.video = {
+          url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+          type: 'youtube',
+          title: isVietnamese ? 'Video giới thiệu' : 'Introduction Video',
+          poster: 'https://via.placeholder.com/800x450/000000/FFFFFF?text=Video',
+          autoplay: false,
+          controls: true,
+        };
+        break;
+
+      case 'code':
+        content.code = {
+          language: 'javascript',
+          code: `// ${isVietnamese ? 'Ví dụ code' : 'Sample code'}
+function ${isVietnamese ? 'tinhTong' : 'calculateSum'}(a, b) {
+  return a + b;
+}
+
+const result = ${isVietnamese ? 'tinhTong' : 'calculateSum'}(5, 10);
+console.log(result); // 15`,
+          title: isVietnamese ? 'Ví dụ hàm tính tổng' : 'Sum Calculation Example',
+          lineNumbers: true,
+        };
+        break;
+
+      case 'faq':
+        content.faq = [
+          {
+            question: isVietnamese ? 'Câu hỏi 1: Làm thế nào để bắt đầu?' : 'Q1: How do I get started?',
+            answer: isVietnamese ? 'Bạn có thể bắt đầu bằng cách đăng ký tài khoản và làm theo hướng dẫn.' : 'You can start by creating an account and following the onboarding tutorial.',
+          },
+          {
+            question: isVietnamese ? 'Câu hỏi 2: Chi phí như thế nào?' : 'Q2: What are the costs?',
+            answer: isVietnamese ? 'Chúng tôi có nhiều gói khác nhau phù hợp với nhu cầu của bạn.' : 'We offer various pricing plans to suit your needs.',
+          },
+          {
+            question: isVietnamese ? 'Câu hỏi 3: Có hỗ trợ kỹ thuật không?' : 'Q3: Is technical support available?',
+            answer: isVietnamese ? 'Đội ngũ hỗ trợ của chúng tôi sẵn sàng giúp đỡ 24/7.' : 'Our support team is available 24/7 to assist you.',
+          },
+        ];
+        break;
+
+      case 'testimonial':
+        content.testimonials = [
+          {
+            quote: isVietnamese ? 'Sản phẩm tuyệt vời! Đã thay đổi hoàn toàn quy trình làm việc của chúng tôi.' : 'Great product! It has completely transformed our workflow.',
+            author: isVietnamese ? 'Nguyễn Văn A' : 'John Doe',
+            title: isVietnamese ? 'Giám đốc kỹ thuật' : 'CTO',
+            company: isVietnamese ? 'Công ty XYZ' : 'XYZ Corp',
+            avatar: 'https://via.placeholder.com/100x100/3B82F6/FFFFFF?text=NA',
+          },
+          {
+            quote: isVietnamese ? 'Dịch vụ khách hàng xuất sắc. Luôn nhận được sự hỗ trợ kịp thời.' : 'Excellent customer service. Always receive timely support.',
+            author: isVietnamese ? 'Trần Thị B' : 'Jane Smith',
+            title: isVietnamese ? 'Quản lý dự án' : 'Project Manager',
+            company: isVietnamese ? 'Công ty ABC' : 'ABC Inc',
+            avatar: 'https://via.placeholder.com/100x100/10B981/FFFFFF?text=JB',
+          },
+        ];
+        break;
+
+      case 'pricing':
+        content.pricing = [
+          {
+            name: isVietnamese ? 'Gói Cơ bản' : 'Basic Plan',
+            price: '$99',
+            period: isVietnamese ? '/tháng' : '/month',
+            features: [
+              isVietnamese ? 'Tối đa 10 người dùng' : 'Up to 10 users',
+              isVietnamese ? 'Hỗ trợ cơ bản' : 'Basic support',
+              isVietnamese ? 'Lưu trữ 10GB' : '10GB storage',
+            ],
+            highlighted: false,
+            buttonText: isVietnamese ? 'Đăng ký' : 'Sign Up',
+          },
+          {
+            name: isVietnamese ? 'Gói Chuyên nghiệp' : 'Pro Plan',
+            price: '$199',
+            period: isVietnamese ? '/tháng' : '/month',
+            features: [
+              isVietnamese ? 'Tối đa 50 người dùng' : 'Up to 50 users',
+              isVietnamese ? 'Hỗ trợ ưu tiên' : 'Priority support',
+              isVietnamese ? 'Lưu trữ 100GB' : '100GB storage',
+              isVietnamese ? 'Tích hợp API' : 'API integration',
+            ],
+            highlighted: true,
+            buttonText: isVietnamese ? 'Đăng ký' : 'Sign Up',
+          },
+          {
+            name: isVietnamese ? 'Gói Doanh nghiệp' : 'Enterprise Plan',
+            price: '$499',
+            period: isVietnamese ? '/tháng' : '/month',
+            features: [
+              isVietnamese ? 'Người dùng không giới hạn' : 'Unlimited users',
+              isVietnamese ? 'Hỗ trợ 24/7' : '24/7 support',
+              isVietnamese ? 'Lưu trữ không giới hạn' : 'Unlimited storage',
+              isVietnamese ? 'Tùy chỉnh đầy đủ' : 'Full customization',
+            ],
+            highlighted: false,
+            buttonText: isVietnamese ? 'Liên hệ' : 'Contact Us',
+          },
+        ];
+        break;
+
+      default:
+        // For standard layouts, just ensure bullets are populated
+        if (!content.bullets || content.bullets.length === 0) {
+          content.bullets = this.generateFallbackBullets(title);
+        }
+        break;
+    }
+  }
+
+  private createVisualCardDataUri(text: string, color: string, index: string): string {
+    const label = SlideExporter.cleanMarkdownText(text).slice(0, 46)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="800" height="520"><rect width="800" height="520" rx="32" fill="${color}"/><circle cx="690" cy="95" r="130" fill="#fff" opacity=".12"/><text x="58" y="100" fill="#fff" opacity=".7" font-family="Arial" font-size="34">${index}</text><text x="58" y="250" fill="#fff" font-family="Arial" font-size="42" font-weight="700">${label}</text><path d="M58 330h420" stroke="#fff" stroke-width="8" opacity=".45"/><path d="M58 370h300" stroke="#fff" stroke-width="8" opacity=".25"/></svg>`;
+    return `data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}`;
   }
 
   private generateDefaultOutline(topic: string): SlidePlan[] {

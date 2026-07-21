@@ -143,7 +143,7 @@ export class SlideExporter {
 
     // Clean title, subtitle, and bullets of raw markdown headers, links, and bullet symbols
     content.title = SlideExporter.cleanMarkdownText(content.title);
-    content.subtitle = SlideExporter.cleanMarkdownText(content.subtitle);
+    content.subtitle = content.subtitle ? SlideExporter.cleanMarkdownText(content.subtitle) : undefined;
     if (content.bullets && Array.isArray(content.bullets)) {
       content.bullets = SlideExporter.sanitizeBullets(content.bullets, content.title);
     }
@@ -644,24 +644,38 @@ export class SlideExporter {
     switch (content.layout) {
       case 'title': {
         pptSlide.addShape('rect', {
-          x: 0, y: 0, w: 0.2, h: 7.5,
+          x: 0,
+          y: 0,
+          w: 0.2,
+          h: 7.5,
           fill: { color: this.hex(colors.primary) },
         });
 
         const titleInfo = this.calculateTitleLayout(content.title, 42, 10.5);
         const titleY = 2.2;
         pptSlide.addText(content.title, {
-          x: 0.8, y: titleY, w: '85%', h: titleInfo.height,
-          fontSize: 42, fontFace: theme.fonts.title,
-          color: this.hex(colors.primary), bold: true, align: 'left',
+          x: 0.8,
+          y: titleY,
+          w: '85%',
+          h: titleInfo.height,
+          fontSize: 42,
+          fontFace: theme.fonts.title,
+          color: this.hex(colors.primary),
+          bold: true,
+          align: 'left',
         });
 
         if (content.subtitle) {
-          const subY = titleY + titleInfo.height + 0.3;
+          const subY = titleY + titleInfo.height + 0.1; // Reduced from 0.3
           pptSlide.addText(content.subtitle, {
-            x: 0.8, y: subY, w: '85%', h: 0.8,
-            fontSize: 20, fontFace: theme.fonts.body,
-            color: this.hex(colors.textLight), align: 'left',
+            x: 0.8,
+            y: subY,
+            w: '85%',
+            h: 0.6, // Reduced from 0.8
+            fontSize: 20,
+            fontFace: theme.fonts.body,
+            color: this.hex(colors.textLight),
+            align: 'left',
           });
         }
         break;
@@ -739,8 +753,83 @@ export class SlideExporter {
         break;
       }
 
-      case 'chart':
-      case 'stats':
+      case 'chart': {
+        const titleInfo = this.renderTitleBar(pptSlide, content, theme, textColor);
+        const startY = 0.4 + titleInfo.height + 0.3;
+        this.renderChartSlide(pptSlide, content, theme, textColor, startY);
+        break;
+      }
+
+      case 'stats': {
+        const titleInfo = this.renderTitleBar(pptSlide, content, theme, textColor);
+        const startY = 0.4 + titleInfo.height + 0.3;
+        this.renderStatsSlide(pptSlide, content, theme, textColor, startY);
+        break;
+      }
+
+      case 'timeline': {
+        const titleInfo = this.renderTitleBar(pptSlide, content, theme, textColor);
+        const startY = 0.4 + titleInfo.height + 0.3;
+        this.renderTimelineSlide(pptSlide, content, theme, textColor, startY);
+        break;
+      }
+
+      case 'flowchart': {
+        const titleInfo = this.renderTitleBar(pptSlide, content, theme, textColor);
+        const startY = 0.4 + titleInfo.height + 0.3;
+        this.renderFlowchartSlide(pptSlide, content, theme, textColor, startY);
+        break;
+      }
+
+      case 'infographic': {
+        const titleInfo = this.renderTitleBar(pptSlide, content, theme, textColor);
+        const startY = 0.4 + titleInfo.height + 0.3;
+        this.renderInfographicSlide(pptSlide, content, theme, textColor, startY);
+        break;
+      }
+
+      case 'image-grid': {
+        const titleInfo = this.renderTitleBar(pptSlide, content, theme, textColor);
+        const startY = 0.4 + titleInfo.height + 0.3;
+        this.renderImageGridSlide(pptSlide, content, theme, textColor, startY);
+        break;
+      }
+
+      case 'video': {
+        const titleInfo = this.renderTitleBar(pptSlide, content, theme, textColor);
+        const startY = 0.4 + titleInfo.height + 0.3;
+        this.renderVideoSlide(pptSlide, content, theme, textColor, startY);
+        break;
+      }
+
+      case 'code': {
+        const titleInfo = this.renderTitleBar(pptSlide, content, theme, textColor);
+        const startY = 0.4 + titleInfo.height + 0.3;
+        this.renderCodeSlide(pptSlide, content, theme, textColor, startY);
+        break;
+      }
+
+      case 'faq': {
+        const titleInfo = this.renderTitleBar(pptSlide, content, theme, textColor);
+        const startY = 0.4 + titleInfo.height + 0.3;
+        this.renderFAQSlide(pptSlide, content, theme, textColor, startY);
+        break;
+      }
+
+      case 'testimonial': {
+        const titleInfo = this.renderTitleBar(pptSlide, content, theme, textColor);
+        const startY = 0.4 + titleInfo.height + 0.3;
+        this.renderTestimonialSlide(pptSlide, content, theme, textColor, startY);
+        break;
+      }
+
+      case 'pricing': {
+        const titleInfo = this.renderTitleBar(pptSlide, content, theme, textColor);
+        const startY = 0.4 + titleInfo.height + 0.3;
+        this.renderPricingSlide(pptSlide, content, theme, textColor, startY);
+        break;
+      }
+
       default: {
         const titleInfo = this.renderTitleBar(pptSlide, content, theme, textColor);
         const startY = 0.4 + titleInfo.height + 0.3;
@@ -763,14 +852,16 @@ export class SlideExporter {
     switch (content.layout) {
       case 'title': {
         const titleInfo = this.calculateTitleLayout(content.title, 44, 10.5);
+        const titleY = 2.2;
         pptSlide.addText(content.title, {
-          x: pad.left, y: 2.2, w: '85%', h: titleInfo.height,
+          x: pad.left, y: titleY, w: '85%', h: titleInfo.height,
           fontSize: 44, fontFace: theme.fonts.title,
           color: this.hex(colors.primary), bold: true, align: 'left',
         });
         if (content.subtitle) {
+          const subY = titleY + titleInfo.height + 0.1;
           pptSlide.addText(content.subtitle, {
-            x: pad.left, y: 2.2 + titleInfo.height + 0.3, w: '85%', h: 0.8,
+            x: pad.left, y: subY, w: '85%', h: 0.6,
             fontSize: 18, fontFace: theme.fonts.body,
             color: this.hex(colors.textLight), align: 'left',
           });
@@ -783,6 +874,90 @@ export class SlideExporter {
         const titleInfo = this.renderMinimalTitle(pptSlide, content, theme);
         const startY = 0.8 + titleInfo.height + 0.4;
         this.renderSplitColumns(pptSlide, content, theme, textColor, startY, content.layout === 'comparison');
+        break;
+      }
+
+      case 'table': {
+        const titleInfo = this.renderMinimalTitle(pptSlide, content, theme);
+        const startY = 0.8 + titleInfo.height + 0.4;
+        this.renderTableSlide(pptSlide, content, theme, textColor, startY);
+        break;
+      }
+
+      case 'chart': {
+        const titleInfo = this.renderMinimalTitle(pptSlide, content, theme);
+        const startY = 0.8 + titleInfo.height + 0.4;
+        this.renderChartSlide(pptSlide, content, theme, textColor, startY);
+        break;
+      }
+
+      case 'stats': {
+        const titleInfo = this.renderMinimalTitle(pptSlide, content, theme);
+        const startY = 0.8 + titleInfo.height + 0.4;
+        this.renderStatsSlide(pptSlide, content, theme, textColor, startY);
+        break;
+      }
+
+      case 'timeline': {
+        const titleInfo = this.renderMinimalTitle(pptSlide, content, theme);
+        const startY = 0.8 + titleInfo.height + 0.4;
+        this.renderTimelineSlide(pptSlide, content, theme, textColor, startY);
+        break;
+      }
+
+      case 'flowchart': {
+        const titleInfo = this.renderMinimalTitle(pptSlide, content, theme);
+        const startY = 0.8 + titleInfo.height + 0.4;
+        this.renderFlowchartSlide(pptSlide, content, theme, textColor, startY);
+        break;
+      }
+
+      case 'infographic': {
+        const titleInfo = this.renderMinimalTitle(pptSlide, content, theme);
+        const startY = 0.8 + titleInfo.height + 0.4;
+        this.renderInfographicSlide(pptSlide, content, theme, textColor, startY);
+        break;
+      }
+
+      case 'image-grid': {
+        const titleInfo = this.renderMinimalTitle(pptSlide, content, theme);
+        const startY = 0.8 + titleInfo.height + 0.4;
+        this.renderImageGridSlide(pptSlide, content, theme, textColor, startY);
+        break;
+      }
+
+      case 'video': {
+        const titleInfo = this.renderMinimalTitle(pptSlide, content, theme);
+        const startY = 0.8 + titleInfo.height + 0.4;
+        this.renderVideoSlide(pptSlide, content, theme, textColor, startY);
+        break;
+      }
+
+      case 'code': {
+        const titleInfo = this.renderMinimalTitle(pptSlide, content, theme);
+        const startY = 0.8 + titleInfo.height + 0.4;
+        this.renderCodeSlide(pptSlide, content, theme, textColor, startY);
+        break;
+      }
+
+      case 'faq': {
+        const titleInfo = this.renderMinimalTitle(pptSlide, content, theme);
+        const startY = 0.8 + titleInfo.height + 0.4;
+        this.renderFAQSlide(pptSlide, content, theme, textColor, startY);
+        break;
+      }
+
+      case 'testimonial': {
+        const titleInfo = this.renderMinimalTitle(pptSlide, content, theme);
+        const startY = 0.8 + titleInfo.height + 0.4;
+        this.renderTestimonialSlide(pptSlide, content, theme, textColor, startY);
+        break;
+      }
+
+      case 'pricing': {
+        const titleInfo = this.renderMinimalTitle(pptSlide, content, theme);
+        const startY = 0.8 + titleInfo.height + 0.4;
+        this.renderPricingSlide(pptSlide, content, theme, textColor, startY);
         break;
       }
 
@@ -825,7 +1000,7 @@ export class SlideExporter {
           color: '#FFFFFF', bold: true, align: 'center',
         });
 
-        const lineY = titleY + titleInfo.height + 0.3;
+        const lineY = titleY + titleInfo.height + 0.1;
         pptSlide.addShape('line', {
           x: 4.16, y: lineY, w: 5.0, h: 0,
           line: { color: this.hex(colors.accent), width: 2 },
@@ -833,7 +1008,7 @@ export class SlideExporter {
 
         if (content.subtitle) {
           pptSlide.addText(content.subtitle, {
-            x: 1.0, y: lineY + 0.3, w: '85%', h: 0.8,
+            x: 1.0, y: lineY + 0.2, w: '85%', h: 0.6,
             fontSize: 20, fontFace: theme.fonts.body,
             color: this.hex(colors.accent), align: 'center',
           });
@@ -846,6 +1021,90 @@ export class SlideExporter {
         const titleInfo = this.renderCorporateTitle(pptSlide, content, theme);
         const startY = 0.9 + titleInfo.height + 0.3;
         this.renderSplitColumns(pptSlide, content, theme, textColor, startY, content.layout === 'comparison');
+        break;
+      }
+
+      case 'table': {
+        const titleInfo = this.renderCorporateTitle(pptSlide, content, theme);
+        const startY = 0.9 + titleInfo.height + 0.3;
+        this.renderTableSlide(pptSlide, content, theme, textColor, startY);
+        break;
+      }
+
+      case 'chart': {
+        const titleInfo = this.renderCorporateTitle(pptSlide, content, theme);
+        const startY = 0.9 + titleInfo.height + 0.3;
+        this.renderChartSlide(pptSlide, content, theme, textColor, startY);
+        break;
+      }
+
+      case 'stats': {
+        const titleInfo = this.renderCorporateTitle(pptSlide, content, theme);
+        const startY = 0.9 + titleInfo.height + 0.3;
+        this.renderStatsSlide(pptSlide, content, theme, textColor, startY);
+        break;
+      }
+
+      case 'timeline': {
+        const titleInfo = this.renderCorporateTitle(pptSlide, content, theme);
+        const startY = 0.9 + titleInfo.height + 0.3;
+        this.renderTimelineSlide(pptSlide, content, theme, textColor, startY);
+        break;
+      }
+
+      case 'flowchart': {
+        const titleInfo = this.renderCorporateTitle(pptSlide, content, theme);
+        const startY = 0.9 + titleInfo.height + 0.3;
+        this.renderFlowchartSlide(pptSlide, content, theme, textColor, startY);
+        break;
+      }
+
+      case 'infographic': {
+        const titleInfo = this.renderCorporateTitle(pptSlide, content, theme);
+        const startY = 0.9 + titleInfo.height + 0.3;
+        this.renderInfographicSlide(pptSlide, content, theme, textColor, startY);
+        break;
+      }
+
+      case 'image-grid': {
+        const titleInfo = this.renderCorporateTitle(pptSlide, content, theme);
+        const startY = 0.9 + titleInfo.height + 0.3;
+        this.renderImageGridSlide(pptSlide, content, theme, textColor, startY);
+        break;
+      }
+
+      case 'video': {
+        const titleInfo = this.renderCorporateTitle(pptSlide, content, theme);
+        const startY = 0.9 + titleInfo.height + 0.3;
+        this.renderVideoSlide(pptSlide, content, theme, textColor, startY);
+        break;
+      }
+
+      case 'code': {
+        const titleInfo = this.renderCorporateTitle(pptSlide, content, theme);
+        const startY = 0.9 + titleInfo.height + 0.3;
+        this.renderCodeSlide(pptSlide, content, theme, textColor, startY);
+        break;
+      }
+
+      case 'faq': {
+        const titleInfo = this.renderCorporateTitle(pptSlide, content, theme);
+        const startY = 0.9 + titleInfo.height + 0.3;
+        this.renderFAQSlide(pptSlide, content, theme, textColor, startY);
+        break;
+      }
+
+      case 'testimonial': {
+        const titleInfo = this.renderCorporateTitle(pptSlide, content, theme);
+        const startY = 0.9 + titleInfo.height + 0.3;
+        this.renderTestimonialSlide(pptSlide, content, theme, textColor, startY);
+        break;
+      }
+
+      case 'pricing': {
+        const titleInfo = this.renderCorporateTitle(pptSlide, content, theme);
+        const startY = 0.9 + titleInfo.height + 0.3;
+        this.renderPricingSlide(pptSlide, content, theme, textColor, startY);
         break;
       }
 
@@ -879,15 +1138,17 @@ export class SlideExporter {
         });
 
         const titleInfo = this.calculateTitleLayout(content.title, 46, 10.5);
+        const titleY = 2.0;
         pptSlide.addText(content.title, {
-          x: 0.8, y: 2.0, w: '85%', h: titleInfo.height,
+          x: 0.8, y: titleY, w: '85%', h: titleInfo.height,
           fontSize: 46, fontFace: theme.fonts.title,
           color: this.hex(colors.accent || colors.primary), bold: true, align: 'left',
         });
 
         if (content.subtitle) {
+          const subY = titleY + titleInfo.height + 0.1;
           pptSlide.addText(content.subtitle, {
-            x: 0.8, y: 2.0 + titleInfo.height + 0.3, w: '85%', h: 0.8,
+            x: 0.8, y: subY, w: '85%', h: 0.6,
             fontSize: 22, fontFace: theme.fonts.body,
             color: this.hex(colors.textLight), align: 'left',
           });
@@ -903,8 +1164,90 @@ export class SlideExporter {
         break;
       }
 
-      case 'chart':
-      case 'stats':
+      case 'table': {
+        const titleInfo = this.renderCreativeTitle(pptSlide, content, theme);
+        const startY = 0.5 + titleInfo.height + 0.3;
+        this.renderTableSlide(pptSlide, content, theme, textColor, startY);
+        break;
+      }
+
+      case 'chart': {
+        const titleInfo = this.renderCreativeTitle(pptSlide, content, theme);
+        const startY = 0.5 + titleInfo.height + 0.3;
+        this.renderChartSlide(pptSlide, content, theme, textColor, startY);
+        break;
+      }
+
+      case 'stats': {
+        const titleInfo = this.renderCreativeTitle(pptSlide, content, theme);
+        const startY = 0.5 + titleInfo.height + 0.3;
+        this.renderStatsSlide(pptSlide, content, theme, textColor, startY);
+        break;
+      }
+
+      case 'timeline': {
+        const titleInfo = this.renderCreativeTitle(pptSlide, content, theme);
+        const startY = 0.5 + titleInfo.height + 0.3;
+        this.renderTimelineSlide(pptSlide, content, theme, textColor, startY);
+        break;
+      }
+
+      case 'flowchart': {
+        const titleInfo = this.renderCreativeTitle(pptSlide, content, theme);
+        const startY = 0.5 + titleInfo.height + 0.3;
+        this.renderFlowchartSlide(pptSlide, content, theme, textColor, startY);
+        break;
+      }
+
+      case 'infographic': {
+        const titleInfo = this.renderCreativeTitle(pptSlide, content, theme);
+        const startY = 0.5 + titleInfo.height + 0.3;
+        this.renderInfographicSlide(pptSlide, content, theme, textColor, startY);
+        break;
+      }
+
+      case 'image-grid': {
+        const titleInfo = this.renderCreativeTitle(pptSlide, content, theme);
+        const startY = 0.5 + titleInfo.height + 0.3;
+        this.renderImageGridSlide(pptSlide, content, theme, textColor, startY);
+        break;
+      }
+
+      case 'video': {
+        const titleInfo = this.renderCreativeTitle(pptSlide, content, theme);
+        const startY = 0.5 + titleInfo.height + 0.3;
+        this.renderVideoSlide(pptSlide, content, theme, textColor, startY);
+        break;
+      }
+
+      case 'code': {
+        const titleInfo = this.renderCreativeTitle(pptSlide, content, theme);
+        const startY = 0.5 + titleInfo.height + 0.3;
+        this.renderCodeSlide(pptSlide, content, theme, textColor, startY);
+        break;
+      }
+
+      case 'faq': {
+        const titleInfo = this.renderCreativeTitle(pptSlide, content, theme);
+        const startY = 0.5 + titleInfo.height + 0.3;
+        this.renderFAQSlide(pptSlide, content, theme, textColor, startY);
+        break;
+      }
+
+      case 'testimonial': {
+        const titleInfo = this.renderCreativeTitle(pptSlide, content, theme);
+        const startY = 0.5 + titleInfo.height + 0.3;
+        this.renderTestimonialSlide(pptSlide, content, theme, textColor, startY);
+        break;
+      }
+
+      case 'pricing': {
+        const titleInfo = this.renderCreativeTitle(pptSlide, content, theme);
+        const startY = 0.5 + titleInfo.height + 0.3;
+        this.renderPricingSlide(pptSlide, content, theme, textColor, startY);
+        break;
+      }
+
       default: {
         const titleInfo = this.renderCreativeTitle(pptSlide, content, theme);
         const startY = 0.5 + titleInfo.height + 0.3;
@@ -929,25 +1272,39 @@ export class SlideExporter {
     const titleInfo = this.calculateTitleLayout(content.title, 32, 11.5);
 
     pptSlide.addText(content.title, {
-      x: 0.6, y: 0.4, w: '88%', h: titleInfo.height,
-      fontSize: 32, fontFace: theme.fonts.title,
-      color: this.hex(textColor), bold: true, align: 'left',
+      x: 0.6,
+      y: 0.4,
+      w: '88%',
+      h: titleInfo.height,
+      fontSize: 32,
+      fontFace: theme.fonts.title,
+      color: this.hex(textColor),
+      bold: true,
+      align: 'left',
     });
 
     let extraH = titleInfo.height;
     if (content.subtitle) {
       const subY = 0.4 + titleInfo.height + 0.05;
       pptSlide.addText(content.subtitle, {
-        x: 0.6, y: subY, w: '88%', h: 0.4,
-        fontSize: 15, fontFace: theme.fonts.body,
-        color: this.hex(colors.textLight || '#666666'), align: 'left',
+        x: 0.6,
+        y: subY,
+        w: '88%',
+        h: 0.3, // Reduced from 0.4
+        fontSize: 15,
+        fontFace: theme.fonts.body,
+        color: this.hex(colors.textLight || '#666666'),
+        align: 'left',
       });
-      extraH += 0.45;
+      extraH += 0.35; // Reduced from 0.45
     }
 
     const lineY = 0.4 + extraH + 0.05;
     pptSlide.addShape('line', {
-      x: 0.6, y: lineY, w: 2.5, h: 0,
+      x: 0.6,
+      y: lineY,
+      w: 2.5,
+      h: 0,
       line: { color: this.hex(colors.primary), width: 2 },
     });
 
@@ -1114,10 +1471,656 @@ export class SlideExporter {
       this.renderCleanText(pptSlide, bullets, theme, textColor, startY, colH);
     }
 
-    pptSlide.addText('🖼️  [ Visual Media ]', {
-      x: imageX, y: startY + colH / 2 - 0.4, w: colW, h: 0.8,
+    const image = content.visuals?.images?.[0];
+    if (image) {
+      pptSlide.addImage({
+        data: image.base64,
+        path: image.url,
+        x: imageX, y: startY, w: colW, h: colH,
+      });
+    } else {
+      pptSlide.addText('🖼️  [ Visual Media ]', {
+        x: imageX, y: startY + colH / 2 - 0.4, w: colW, h: 0.8,
+        fontSize: 18, fontFace: theme.fonts.title,
+        color: this.hex(colors.primary), align: 'center', valign: 'middle',
+      });
+    }
+  }
+
+  // ─── NEW LAYOUT RENDERERS ───────────────────────────────
+
+  private renderChartSlide(pptSlide: any, content: any, theme: ThemeLayout, textColor: string, startY: number): void {
+    const colors = theme.colors;
+    const chart = content.chart || content.visuals?.chart;
+
+    if (!chart) {
+      // Fallback: render bullets
+      if (content.bullets && content.bullets.length > 0) {
+        this.renderCleanText(pptSlide, content.bullets, theme, textColor, startY, 5.0);
+      }
+      return;
+    }
+
+    // PptxGenJS expects series objects ({ name, labels, values }), while the
+    // content model intentionally accepts the simpler [{ label, value }] form.
+    const series = this.toPptxChartSeries(chart);
+    if (series.length === 0) {
+      this.renderCleanText(pptSlide, content.bullets || [], theme, textColor, startY, 5.0);
+      return;
+    }
+
+    // Fixed height for chart to avoid overlapping with text
+    const chartH = 3.2;
+    pptSlide.addChart(chart.type, series, {
+      x: 1.0,
+      y: startY + 0.2,
+      w: 11.3,
+      h: chartH,
+      chartTitle: chart.title,
+      showLegend: true,
+      chartColors: (chart.colors || []).map((color: string) => this.hex(color)),
+    });
+
+    // Render bullets if available, ensuring they don't overlap with the chart
+    if (content.bullets && content.bullets.length > 0) {
+      const textY = startY + chartH + 0.4;
+      const textH = Math.max(1.5, 6.8 - textY);
+      this.renderCleanText(pptSlide, content.bullets, theme, textColor, textY, textH);
+    }
+  }
+
+  private toPptxChartSeries(chart: any): Array<{ name: string; labels: string[]; values: number[] }> {
+    const data = Array.isArray(chart?.data) ? chart.data : [];
+    if (data.length === 0) return [];
+    if (data.every((item: any) => Array.isArray(item.labels) && Array.isArray(item.values))) {
+      return data;
+    }
+
+    const labelKey = Object.keys(data[0] || {}).find(key => typeof data[0][key] === 'string') || 'label';
+    const valueKeys = Object.keys(data[0] || {}).filter(key => key !== labelKey && typeof data[0][key] === 'number');
+    return valueKeys.map(key => ({
+      name: key === 'value' ? (chart.title || 'Value') : key,
+      labels: data.map((item: any, index: number) => String(item[labelKey] ?? chart.labels?.[index] ?? index + 1)),
+      values: data.map((item: any) => Number(item[key]) || 0),
+    }));
+  }
+
+  private renderStatsSlide(pptSlide: any, content: any, theme: ThemeLayout, textColor: string, startY: number): void {
+    const colors = theme.colors;
+    const stats = content.stats;
+
+    if (!stats || stats.length === 0) {
+      if (content.bullets && content.bullets.length > 0) {
+        this.renderCleanText(pptSlide, content.bullets, theme, textColor, startY, 5.0);
+      }
+      return;
+    }
+
+    const statsPerRow = 3;
+    const cardWidth = 3.5;
+    const cardHeight = 2.0;
+    const margin = 0.3;
+
+    stats.forEach((stat: any, index: number) => {
+      const row = Math.floor(index / statsPerRow);
+      const col = index % statsPerRow;
+
+      const x = 0.8 + col * (cardWidth + margin);
+      const y = startY + row * (cardHeight + margin);
+
+      // Card background
+      pptSlide.addShape('rect', {
+        x, y, w: cardWidth, h: cardHeight,
+        fill: { color: this.hex(stat.color || colors.accent || colors.primary) },
+        line: { color: this.hex(colors.primary), width: 1 },
+      });
+
+      // Stat value
+      pptSlide.addText(String(stat.value), {
+        x: x + 0.2, y: y + 0.2, w: cardWidth - 0.4, h: 0.8,
+        fontSize: 24, fontFace: theme.fonts.title,
+        color: '#FFFFFF', bold: true, align: 'center',
+      });
+
+      // Stat label
+      pptSlide.addText(stat.label, {
+        x: x + 0.2, y: y + 1.0, w: cardWidth - 0.4, h: 0.6,
+        fontSize: 12, fontFace: theme.fonts.body,
+        color: '#FFFFFF', align: 'center',
+      });
+
+      // Icon placeholder
+      if (stat.icon) {
+        pptSlide.addText(`[${stat.icon}]`, {
+          x: x + cardWidth - 0.6, y: y + cardHeight - 0.4, w: 0.4, h: 0.4,
+          fontSize: 10, fontFace: theme.fonts.body,
+          color: '#FFFFFF', align: 'center',
+        });
+      }
+    });
+  }
+
+  private renderTimelineSlide(pptSlide: any, content: any, theme: ThemeLayout, textColor: string, startY: number): void {
+    const colors = theme.colors;
+    const timeline = content.timeline;
+
+    if (!timeline || timeline.length === 0) {
+      if (content.bullets && content.bullets.length > 0) {
+        this.renderCleanText(pptSlide, content.bullets, theme, textColor, startY, 5.0);
+      }
+      return;
+    }
+
+    const itemHeight = 1.2;
+    const lineX = 1.5;
+    const dotRadius = 0.15;
+
+    // Vertical timeline line
+    pptSlide.addShape('line', {
+      x: lineX, y: startY, w: 0, h: timeline.length * itemHeight,
+      line: { color: this.hex(colors.primary), width: 2 },
+    });
+
+    timeline.forEach((item: any, index: number) => {
+      const y = startY + index * itemHeight;
+
+      // Timeline dot
+      pptSlide.addShape('circle', {
+        x: lineX - dotRadius, y: y, w: dotRadius * 2, h: dotRadius * 2,
+        fill: { color: this.hex(colors.primary) },
+      });
+
+      // Date
+      pptSlide.addText(item.date, {
+        x: 0.6, y: y - 0.1, w: 0.8, h: 0.4,
+        fontSize: 10, fontFace: theme.fonts.body,
+        color: this.hex(colors.primary), bold: true, align: 'right',
+      });
+
+      // Title
+      pptSlide.addText(item.title, {
+        x: lineX + 0.3, y: y, w: 10.0, h: 0.4,
+        fontSize: 14, fontFace: theme.fonts.title,
+        color: this.hex(textColor), bold: true,
+      });
+
+      // Description
+      pptSlide.addText(item.description, {
+        x: lineX + 0.3, y: y + 0.45, w: 10.0, h: 0.6,
+        fontSize: 11, fontFace: theme.fonts.body,
+        color: this.hex(textColor),
+      });
+    });
+  }
+
+  private renderFlowchartSlide(pptSlide: any, content: any, theme: ThemeLayout, textColor: string, startY: number): void {
+    const colors = theme.colors;
+    const flowchart = content.flowchart;
+
+    if (!flowchart || !flowchart.nodes || flowchart.nodes.length === 0) {
+      if (content.bullets && content.bullets.length > 0) {
+        this.renderCleanText(pptSlide, content.bullets, theme, textColor, startY, 5.0);
+      }
+      return;
+    }
+
+    // Render flowchart as a visual diagram
+    pptSlide.addText('[Flowchart Diagram]', {
+      x: 1.0, y: startY + 0.5, w: 11.3, h: 1.0,
+      fontSize: 20, fontFace: theme.fonts.title,
+      color: this.hex(colors.primary), bold: true, align: 'center',
+    });
+
+    // Render nodes
+    const nodeYStart = startY + 1.5;
+    const nodeSpacing = 0.8;
+
+    flowchart.nodes.forEach((node: any, index: number) => {
+      const y = nodeYStart + index * nodeSpacing;
+      const nodeColor = node.type === 'start' ? colors.accent :
+                       node.type === 'end' ? colors.secondary :
+                       colors.primary;
+
+      pptSlide.addShape('rect', {
+        x: 2.0, y: y, w: 9.3, h: 0.6,
+        fill: { color: this.hex(nodeColor) },
+        line: { color: this.hex(colors.primary), width: 1 },
+      });
+
+      pptSlide.addText(node.label, {
+        x: 2.2, y: y + 0.1, w: 8.9, h: 0.4,
+        fontSize: 12, fontFace: theme.fonts.body,
+        color: '#FFFFFF', align: 'center',
+      });
+    });
+
+    // Render edges as connecting lines
+    if (flowchart.edges && flowchart.edges.length > 0) {
+      pptSlide.addText(`[${flowchart.edges.length} connections]`, {
+        x: 1.0, y: startY + 5.0, w: 11.3, h: 0.4,
+        fontSize: 11, fontFace: theme.fonts.body,
+        color: this.hex(textColor), align: 'center',
+      });
+    }
+  }
+
+  private renderInfographicSlide(pptSlide: any, content: any, theme: ThemeLayout, textColor: string, startY: number): void {
+    const colors = theme.colors;
+    const infographic = content.infographic;
+
+    if (!infographic || infographic.length === 0) {
+      if (content.bullets && content.bullets.length > 0) {
+        this.renderCleanText(pptSlide, content.bullets, theme, textColor, startY, 5.0);
+      }
+      return;
+    }
+
+    // Group elements by type for better layout organization
+    const headers = infographic.filter((e: any) => e.type === 'header');
+    const stats = infographic.filter((e: any) => e.type === 'stat');
+    const texts = infographic.filter((e: any) => e.type === 'text');
+    const images = infographic.filter((e: any) => e.type === 'image');
+    const charts = infographic.filter((e: any) => e.type === 'chart');
+    const icons = infographic.filter((e: any) => e.type === 'icon');
+
+    // Calculate layout based on element types
+    const totalHeight = 6.0;
+    let currentY = startY;
+
+    // Render headers first
+    headers.forEach((element: any) => {
+      const style = element.style || {};
+      pptSlide.addText(element.content, {
+        x: 1.0, y: currentY, w: 11.3, h: 0.6,
+        fontSize: style.fontSize || 20,
+        fontFace: style.fontWeight === 'bold' ? theme.fonts.title : theme.fonts.body,
+        color: this.hex(style.color || colors.primary),
+        bold: style.fontWeight === 'bold',
+        align: 'center',
+      });
+      currentY += 0.7;
+    });
+
+    // Render stats in a grid layout (3 columns)
+    if (stats.length > 0) {
+      const statsPerRow = Math.min(3, stats.length);
+      const cardWidth = 3.5;
+      const cardHeight = 1.8;
+      const margin = 0.3;
+      const startX = (13.33 - (statsPerRow * (cardWidth + margin) - margin)) / 2;
+
+      stats.forEach((stat: any, index: number) => {
+        const row = Math.floor(index / statsPerRow);
+        const col = index % statsPerRow;
+        const x = startX + col * (cardWidth + margin);
+        const y = currentY + row * (cardHeight + margin);
+
+        // Card background
+        pptSlide.addShape('rect', {
+          x, y, w: cardWidth, h: cardHeight,
+          fill: { color: this.hex(stat.style?.backgroundColor || colors.accent || colors.primary) },
+          line: { color: this.hex(colors.primary), width: 1 },
+        });
+
+        // Stat value
+        pptSlide.addText(String(stat.content), {
+          x: x + 0.2, y: y + 0.2, w: cardWidth - 0.4, h: 0.8,
+          fontSize: 20, fontFace: theme.fonts.title,
+          color: '#FFFFFF', bold: true, align: 'center',
+        });
+
+        // Icon if available
+        if (stat.icon) {
+          pptSlide.addText(`[${stat.icon}]`, {
+            x: x + cardWidth - 0.6, y: y + cardHeight - 0.4, w: 0.4, h: 0.4,
+            fontSize: 14, fontFace: theme.fonts.body,
+            color: '#FFFFFF', align: 'center',
+          });
+        }
+      });
+
+      currentY += Math.ceil(stats.length / statsPerRow) * (cardHeight + margin);
+    }
+
+    // Render text elements
+    texts.forEach((element: any) => {
+      const style = element.style || {};
+      pptSlide.addText(element.content, {
+        x: 1.0, y: currentY, w: 11.3, h: 0.5,
+        fontSize: style.fontSize || 14,
+        fontFace: theme.fonts.body,
+        color: this.hex(style.color || textColor),
+        align: 'center',
+      });
+      currentY += 0.6;
+    });
+
+    // Render images, charts, and icons as placeholders
+    [...images, ...charts, ...icons].forEach((element: any) => {
+      pptSlide.addText(`[${element.type}: ${element.content || element.label || 'Visual Element'}]`, {
+        x: 1.0, y: currentY, w: 11.3, h: 0.5,
+        fontSize: 12, fontFace: theme.fonts.body,
+        color: this.hex(textColor),
+        align: 'center',
+      });
+      currentY += 0.6;
+    });
+  }
+
+  private renderImageGridSlide(pptSlide: any, content: any, theme: ThemeLayout, textColor: string, startY: number): void {
+    const colors = theme.colors;
+    const images = content.imageGrid || content.visuals?.images;
+
+    if (!images || images.length === 0) {
+      if (content.bullets && content.bullets.length > 0) {
+        this.renderCleanText(pptSlide, content.bullets, theme, textColor, startY, 5.0);
+      }
+      return;
+    }
+
+    pptSlide.addText('[Image Grid]', {
+      x: 1.0, y: startY + 0.5, w: 11.3, h: 0.6,
       fontSize: 18, fontFace: theme.fonts.title,
-      color: this.hex(colors.primary), align: 'center', valign: 'middle',
+      color: this.hex(colors.primary), bold: true, align: 'center',
+    });
+
+    // Render image placeholders
+    const cols = 3;
+    const cardWidth = 3.5;
+    const cardHeight = 2.5;
+    const margin = 0.2;
+
+    images.forEach((img: any, index: number) => {
+      const row = Math.floor(index / cols);
+      const col = index % cols;
+
+      const x = 0.8 + col * (cardWidth + margin);
+      const y = startY + 1.2 + row * (cardHeight + margin);
+
+      pptSlide.addImage({
+        data: img.base64,
+        path: img.url,
+        x, y, w: cardWidth, h: cardHeight,
+      });
+    });
+  }
+
+  private renderVideoSlide(pptSlide: any, content: any, theme: ThemeLayout, textColor: string, startY: number): void {
+    const colors = theme.colors;
+    const video = content.video;
+
+    if (!video) {
+      if (content.bullets && content.bullets.length > 0) {
+        this.renderCleanText(pptSlide, content.bullets, theme, textColor, startY, 5.0);
+      }
+      return;
+    }
+
+    pptSlide.addText(`[${video.type || 'Video'}: ${video.title || 'Embedded Video'}]`, {
+      x: 1.0, y: startY + 0.5, w: 11.3, h: 0.8,
+      fontSize: 18, fontFace: theme.fonts.title,
+      color: this.hex(colors.primary), bold: true, align: 'center',
+    });
+
+    // Video placeholder
+    pptSlide.addShape('rect', {
+      x: 1.0, y: startY + 1.5, w: 11.3, h: 4.0,
+      fill: { color: '000000' },
+      line: { color: this.hex(colors.primary), width: 2 },
+    });
+
+    pptSlide.addText('▶ Play Video', {
+      x: 1.0, y: startY + 3.0, w: 11.3, h: 0.6,
+      fontSize: 16, fontFace: theme.fonts.body,
+      color: '#FFFFFF', align: 'center', valign: 'middle',
+    });
+
+    // URL
+    pptSlide.addText(video.url, {
+      x: 1.0, y: startY + 5.8, w: 11.3, h: 0.4,
+      fontSize: 10, fontFace: theme.fonts.body,
+      color: this.hex(textColor), align: 'center',
+    });
+
+    // Render bullets if available
+    if (content.bullets && content.bullets.length > 0) {
+      this.renderCleanText(pptSlide, content.bullets, theme, textColor, startY + 6.3, 1.0);
+    }
+  }
+
+  private renderCodeSlide(pptSlide: any, content: any, theme: ThemeLayout, textColor: string, startY: number): void {
+    const colors = theme.colors;
+    const code = content.code;
+
+    if (!code) {
+      if (content.bullets && content.bullets.length > 0) {
+        this.renderCleanText(pptSlide, content.bullets, theme, textColor, startY, 5.0);
+      }
+      return;
+    }
+
+    // Title
+    if (code.title) {
+      pptSlide.addText(code.title, {
+        x: 1.0, y: startY, w: 11.3, h: 0.5,
+        fontSize: 16, fontFace: theme.fonts.title,
+        color: this.hex(colors.primary), bold: true, align: 'left',
+      });
+    }
+
+    // Code block background
+    pptSlide.addShape('rect', {
+      x: 0.8, y: startY + 0.6, w: 11.7, h: 4.5,
+      fill: { color: '1E1E1E' },
+      line: { color: this.hex(colors.primary), width: 1 },
+    });
+
+    // Code content
+    const codeLines = code.code.split('\n').slice(0, 20); // Limit to 20 lines
+    codeLines.forEach((line: string, index: number) => {
+      const y = startY + 0.8 + index * 0.3;
+
+      // Line numbers
+      if (code.lineNumbers) {
+        pptSlide.addText(String(index + 1), {
+          x: 1.0, y, w: 0.5, h: 0.3,
+          fontSize: 10, fontFace: 'Consolas, Monaco, monospace',
+          color: '#858585', align: 'right',
+        });
+      }
+
+      // Code text
+      pptSlide.addText(line, {
+        x: code.lineNumbers ? 1.6 : 1.0, y, w: 10.7, h: 0.3,
+        fontSize: 11, fontFace: 'Consolas, Monaco, monospace',
+        color: '#D4D4D4', align: 'left',
+      });
+    });
+
+    // Language label
+    pptSlide.addText(code.language, {
+      x: 11.0, y: startY + 0.6, w: 1.5, h: 0.3,
+      fontSize: 10, fontFace: theme.fonts.body,
+      color: this.hex(colors.accent), align: 'right',
+    });
+  }
+
+  private renderFAQSlide(pptSlide: any, content: any, theme: ThemeLayout, textColor: string, startY: number): void {
+    const colors = theme.colors;
+    const faq = content.faq;
+
+    if (!faq || faq.length === 0) {
+      if (content.bullets && content.bullets.length > 0) {
+        this.renderCleanText(pptSlide, content.bullets, theme, textColor, startY, 5.0);
+      }
+      return;
+    }
+
+    pptSlide.addText('Frequently Asked Questions', {
+      x: 1.0, y: startY, w: 11.3, h: 0.5,
+      fontSize: 18, fontFace: theme.fonts.title,
+      color: this.hex(colors.primary), bold: true, align: 'center',
+    });
+
+    const itemHeight = 1.0;
+    faq.forEach((item: any, index: number) => {
+      const y = startY + 0.7 + index * itemHeight;
+
+      // Question
+      pptSlide.addText(`Q: ${item.question}`, {
+        x: 0.8, y, w: 11.7, h: 0.4,
+        fontSize: 13, fontFace: theme.fonts.title,
+        color: this.hex(colors.primary), bold: true,
+      });
+
+      // Answer
+      pptSlide.addText(`A: ${item.answer}`, {
+        x: 1.0, y: y + 0.45, w: 11.3, h: 0.4,
+        fontSize: 12, fontFace: theme.fonts.body,
+        color: this.hex(textColor),
+      });
+    });
+  }
+
+  private renderTestimonialSlide(pptSlide: any, content: any, theme: ThemeLayout, textColor: string, startY: number): void {
+    const colors = theme.colors;
+    const testimonials = content.testimonials;
+
+    if (!testimonials || testimonials.length === 0) {
+      if (content.bullets && content.bullets.length > 0) {
+        this.renderCleanText(pptSlide, content.bullets, theme, textColor, startY, 5.0);
+      }
+      return;
+    }
+
+    pptSlide.addText('Customer Testimonials', {
+      x: 1.0, y: startY, w: 11.3, h: 0.5,
+      fontSize: 18, fontFace: theme.fonts.title,
+      color: this.hex(colors.primary), bold: true, align: 'center',
+    });
+
+    const cardWidth = 5.4;
+    const cardHeight = 2.5;
+    const margin = 0.3;
+
+    testimonials.forEach((test: any, index: number) => {
+      const col = index % 2;
+      const row = Math.floor(index / 2);
+
+      const x = 0.8 + col * (cardWidth + margin);
+      const y = startY + 0.7 + row * (cardHeight + margin);
+
+      // Card background
+      pptSlide.addShape('rect', {
+        x, y, w: cardWidth, h: cardHeight,
+        fill: { color: this.hex(colors.background) },
+        line: { color: this.hex(colors.primary), width: 1 },
+      });
+
+      // Quote
+      pptSlide.addText(`"${test.quote}"`, {
+        x: x + 0.2, y: y + 0.2, w: cardWidth - 0.4, h: 1.2,
+        fontSize: 11, fontFace: theme.fonts.body,
+        color: this.hex(textColor), italic: true,
+      });
+
+      // Author
+      pptSlide.addText(`— ${test.author}${test.title ? ', ' + test.title : ''}`, {
+        x: x + 0.2, y: y + 1.5, w: cardWidth - 0.4, h: 0.4,
+        fontSize: 10, fontFace: theme.fonts.body,
+        color: this.hex(colors.primary), bold: true,
+      });
+
+      // Company
+      if (test.company) {
+        pptSlide.addText(test.company, {
+          x: x + 0.2, y: y + 1.95, w: cardWidth - 0.4, h: 0.3,
+          fontSize: 9, fontFace: theme.fonts.body,
+          color: this.hex(colors.textLight), align: 'right',
+        });
+      }
+    });
+  }
+
+  private renderPricingSlide(pptSlide: any, content: any, theme: ThemeLayout, textColor: string, startY: number): void {
+    const colors = theme.colors;
+    const pricing = content.pricing;
+
+    if (!pricing || pricing.length === 0) {
+      if (content.bullets && content.bullets.length > 0) {
+        this.renderCleanText(pptSlide, content.bullets, theme, textColor, startY, 5.0);
+      }
+      return;
+    }
+
+    pptSlide.addText('Pricing Plans', {
+      x: 1.0, y: startY, w: 11.3, h: 0.5,
+      fontSize: 18, fontFace: theme.fonts.title,
+      color: this.hex(colors.primary), bold: true, align: 'center',
+    });
+
+    const cardWidth = 3.3;
+    const cardHeight = 4.5;
+    const margin = 0.3;
+
+    pricing.forEach((plan: any, index: number) => {
+      const x = 0.8 + index * (cardWidth + margin);
+
+      // Card background
+      const bgColor = plan.highlighted ? colors.primary : colors.background;
+      pptSlide.addShape('rect', {
+        x, y: startY + 0.7, w: cardWidth, h: cardHeight,
+        fill: { color: this.hex(bgColor) },
+        line: { color: this.hex(colors.primary), width: plan.highlighted ? 2 : 1 },
+      });
+
+      // Plan name
+      pptSlide.addText(plan.name, {
+        x: x + 0.2, y: startY + 0.9, w: cardWidth - 0.4, h: 0.5,
+        fontSize: 14, fontFace: theme.fonts.title,
+        color: plan.highlighted ? '#FFFFFF' : this.hex(colors.primary),
+        bold: true, align: 'center',
+      });
+
+      // Price
+      pptSlide.addText(plan.price, {
+        x: x + 0.2, y: startY + 1.5, w: cardWidth - 0.4, h: 0.6,
+        fontSize: 20, fontFace: theme.fonts.title,
+        color: plan.highlighted ? '#FFFFFF' : this.hex(colors.accent),
+        bold: true, align: 'center',
+      });
+
+      // Period
+      if (plan.period) {
+        pptSlide.addText(plan.period, {
+          x: x + 0.2, y: startY + 2.1, w: cardWidth - 0.4, h: 0.3,
+          fontSize: 10, fontFace: theme.fonts.body,
+          color: plan.highlighted ? '#FFFFFF' : this.hex(colors.textLight),
+          align: 'center',
+        });
+      }
+
+      // Features
+      const featureYStart = startY + 2.6;
+      (plan.features || []).slice(0, 5).forEach((feature: string, fIndex: number) => {
+        pptSlide.addText(`• ${feature}`, {
+          x: x + 0.3, y: featureYStart + fIndex * 0.3, w: cardWidth - 0.6, h: 0.3,
+          fontSize: 10, fontFace: theme.fonts.body,
+          color: plan.highlighted ? '#FFFFFF' : this.hex(textColor),
+        });
+      });
+
+      // Button
+      pptSlide.addShape('rect', {
+        x: x + 0.4, y: startY + 4.0, w: cardWidth - 0.8, h: 0.4,
+        fill: { color: plan.highlighted ? this.hex(colors.accent) : this.hex(colors.primary) },
+      });
+
+      pptSlide.addText(plan.buttonText || 'Get Started', {
+        x: x + 0.4, y: startY + 4.0, w: cardWidth - 0.8, h: 0.4,
+        fontSize: 11, fontFace: theme.fonts.body,
+        color: '#FFFFFF', bold: true, align: 'center', valign: 'middle',
+      });
     });
   }
 
