@@ -82,11 +82,12 @@ npx tsx src/index.ts generate \
 |--------|-------|----------|
 | `-i, --input` | Chủ đề presentation (required) | - |
 | `-f, --file` | Đọc nội dung từ file markdown | - |
-| `-t, --theme` | Theme: modern, minimal, corporate, creative | modern |
+| `-t, --theme` | Theme: modern, minimal, corporate, creative, elegant, tech, bold, gradient | modern |
 | `-l, --language` | Ngôn ngữ: vi, en, ja, ko | vi |
 | `-m, --max-slides` | Số slide tối đa | 20 |
 | `-a, --aspect-ratio` | Tỷ lệ khung hình: 16:9, 4:3 | 16:9 |
 | `-o, --output` | Đường dẫn file output | presentation.pptx |
+| `--no-fallback` | Tắt auto-fallback khi LLM primary lỗi | enabled (bật) |
 
 ### API Usage
 
@@ -405,6 +406,8 @@ const memory = {
 | `creative` | Bold, playful | Purple/Pink gradient on dark | Arial + Georgia | Emoji prefixes ✨💡🚀 |
 | `elegant` | Luxury, sophisticated | Deep Gold/Black | Playfair Display | Custom bullet markers |
 | `tech` | Cyberpunk, future | Neon Green/Dark | Roboto Mono | Code-style bullets |
+| `bold` | Editorial magazine, high-contrast | Red (#FF2D20) + orange (#FF6B35) | Arial + Georgia | Bold markers, asymmetric layouts |
+| `gradient` | Stripe/Linear style, glass morphism | Indigo (#6366F1) → pink (#EC4899) trên dark | Arial + Georgia | Gradient bullets, glass effects |
 
 ```bash
 # Thử các theme khác nhau
@@ -412,6 +415,8 @@ npx tsx src/index.ts generate -i "Pitch deck" -t modern -o modern.pptx
 npx tsx src/index.ts generate -i "Pitch deck" -t minimal -o minimal.pptx
 npx tsx src/index.ts generate -i "Pitch deck" -t corporate -o corporate.pptx
 npx tsx src/index.ts generate -i "Pitch deck" -t creative -o creative.pptx
+npx tsx src/index.ts generate -i "Pitch deck" -t bold -o bold.pptx
+npx tsx src/index.ts generate -i "Pitch deck" -t gradient -o gradient.pptx
 ```
 
 ### 5. Agents (Thần kinh)
@@ -461,18 +466,94 @@ graph LR
 
 ---
 
+## 🗺️ Slide Layout Engine
+
+Ngoài các layout cơ bản (title, two-column, image), engine hỗ trợ **12 layout chuyên biệt** được LLM tự động chọn dựa trên nội dung slide.
+
+### Layout Types
+
+| Layout | Mô tả | Trường hợp sử dụng |
+|--------|-------|-------------------|
+| `chart` | Biểu đồ (bar/line/pie/area/doughnut/radar/scatter) | Dữ liệu số liệu, so sánh, phân bổ |
+| `stats` | KPI dashboard với stats cards | Metrics, performance indicators |
+| `timeline` | Timeline ngang với milestones | Lịch trình, roadmap, project plan |
+| `flowchart` | Flowchart với nodes & edges | Quy trình, workflow, decision tree |
+| `infographic` | Mixed content (text + stats + visuals) | Data storytelling, tổng quan |
+| `image-grid` | Grid ảnh 2×2, 3×1 | Gallery, portfolio, showcases |
+| `video` | Video/media placeholder | Demo, tutorial, presentation |
+| `code` | Code block | Technical slides, code walkthrough |
+| `faq` | FAQ accordion-style | Q&A, troubleshooting |
+| `testimonial` | Testimonial card | Customer quotes, case studies |
+| `pricing` | Pricing/feature comparison | Product plans, tiers |
+| `table` | Structured data table | Specifications, data comparisons |
+
+### Emoji Icon System
+
+PPTX không support icon fonts (Font Awesome, etc.). Engine auto-maps 100+ icon names → emoji symbols:
+
+| Icon Name | Emoji | Icon Name | Emoji |
+|-----------|-------|-----------|-------|
+| `trending-up` | 📈 | `users` | 👥 |
+| `chart` | 📊 | `code` | 💻 |
+| `calendar` | 📅 | `lightbulb` | 💡 |
+| `rocket` | 🚀 | `target` | 🎯 |
+| `star` | ⭐ | `check-circle` | ✅ |
+
+Fallback: `✦` nếu không tìm thấy icon match.
+
+### Intelligent Chart Detection
+
+Tự động chọn chart type dựa trên tiêu đề slide:
+
+| Title keyword | Chart type |
+|---------------|-----------|
+| trend, growth, progress, tăng trưởng | **line** |
+| distribution, share, phân bổ, tỷ lệ | **pie** |
+| compare, comparison, so sánh, đối chiếu | **bar** |
+| overtime, history, timeline, theo thời gian | **area** |
+| radar, skill, assessment, kỹ năng, đánh giá | **radar** |
+| revenue, sales, doanh thu, budget, ngân sách | **doughnut** |
+| Không match keyword | **bar** (mặc định) |
+
+### Adaptive Fallback Data
+
+Khi LLM không sinh được nội dung cho special layout, engine tự động tạo fallback data **khác nhau cho mỗi slide** dựa trên title hash:
+
+```typescript
+seedFromTitle("Quarterly Revenue") → seed = 42
+→ generateChartValues(42) → [60, 45, 75, 55]
+→ pickChartType("Quarterly Revenue", 42) → 'bar'
+
+seedFromTitle("Growth Trends") → seed = 17
+→ pickChartType("Growth Trends", 17) → 'line'
+```
+
+Đảm bảo fallback slides không bị giống nhau.
+
+---
+
 ## 🧪 Testing
 
 ```bash
-# Chạy tất cả tests
+# Chạy tất cả tests (unit + visual + overlap)
 npm test
 
-# Chạy tests cho guardrails
-npm test -- --grep "guardrails"
+# Chạy tests theo nhóm
+npm test -- --grep "guardrails"      # Guardrails tests
+npm test -- --grep "agents"          # Agent tests
+npm test -- --grep "Visual Export"   # Visual export integration tests
 
-# Chạy tests cho agents
-npm test -- --grep "agents"
+# Demo tất cả layouts
+npx tsx test-new-layouts.ts
 ```
+
+### Test Structure
+
+| File | Mô tả |
+|------|-------|
+| `__tests__/visualExport.test.ts` | Visual export integration (từng layout × theme) |
+| `__tests__/overlapTest.test.ts` | Phát hiện element overlap trên slide |
+| `test-new-layouts.ts` | Demo script sinh tất cả layouts (không phải test) |
 
 ---
 
