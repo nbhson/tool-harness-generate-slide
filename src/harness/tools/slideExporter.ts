@@ -27,6 +27,107 @@ export class SlideExporter {
   }
 
   /**
+   * Map common icon names to emoji/Unicode symbols for visual rendering
+   * in PPTX (which doesn't support icon fonts like Font Awesome).
+   */
+  public static ICON_MAP: Record<string, string> = {
+    // Business & metrics
+    'trending-up': '📈', 'trending-down': '📉', 'growth': '📈',
+    'chart': '📊', 'bar-chart': '📊', 'pie-chart': '🥧', 'line-chart': '📈',
+    'analytics': '📊', 'stats': '📊', 'statistics': '📊',
+    'report': '📋', 'dashboard': '📊', 'metric': '📏',
+    'target': '🎯', 'goal': '🎯', 'bullseye': '🎯',
+    'award': '🏆', 'trophy': '🏆', 'medal': '🏅', 'badge': '🔰',
+    // Actions
+    'check': '✅', 'check-circle': '✅', 'done': '✅',
+    'cross': '❌', 'close': '❌', 'x-circle': '❌',
+    'plus': '➕', 'minus': '➖',
+    'download': '⬇️', 'upload': '⬆️', 'export': '📤', 'import': '📥',
+    'share': '🔗', 'link': '🔗', 'send': '📨',
+    'search': '🔍', 'zoom': '🔍', 'find': '🔎',
+    'settings': '⚙️', 'gear': '⚙️', 'configure': '⚙️',
+    'edit': '✏️', 'pencil': '✏️', 'write': '✏️',
+    'delete': '🗑️', 'trash': '🗑️', 'remove': '🗑️',
+    'lock': '🔒', 'unlock': '🔓', 'security': '🔒',
+    'refresh': '🔄', 'sync': '🔄', 'reload': '🔄',
+    'play': '▶️', 'pause': '⏸️', 'stop': '⏹️',
+    // Users & people
+    'users': '👥', 'people': '👥', 'team': '👥', 'group': '👥',
+    'user': '👤', 'person': '👤', 'profile': '👤',
+    'customer': '🤝', 'client': '🤝', 'partner': '🤝',
+    'testimonial': '💬', 'feedback': '💬', 'comment': '💬',
+    'support': '🎧', 'headset': '🎧', 'help': '❓',
+    // Tech
+    'code': '💻', 'coding': '💻', 'programming': '💻',
+    'server': '🖥️', 'database': '🗄️', 'storage': '💾',
+    'cloud': '☁️', 'api': '🔌', 'integration': '🔌',
+    'mobile': '📱', 'app': '📱', 'phone': '📞',
+    'email': '📧', 'mail': '📧', 'message': '💬',
+    'notification': '🔔', 'bell': '🔔', 'alert': '🔔',
+    'globe': '🌐', 'web': '🌐', 'internet': '🌐',
+    'github': '🐙', 'git': '🔀', 'branch': '🔀',
+    // Time & schedule
+    'calendar': '📅', 'date': '📅', 'schedule': '📅',
+    'clock': '⏰', 'time': '⏰', 'timer': '⏱️',
+    'hourglass': '⌛', 'deadline': '⏰',
+    'rocket': '🚀', 'launch': '🚀', 'deploy': '🚀',
+    'flag': '🚩', 'milestone': '🏁', 'finish': '🏁',
+    // Communication
+    'lightbulb': '💡', 'idea': '💡', 'innovation': '💡',
+    'solution': '🔧', 'tool': '🔧', 'fix': '🔧',
+    'star': '⭐', 'favorite': '⭐', 'rating': '⭐',
+    'heart': '❤️', 'like': '👍', 'thumbs-up': '👍',
+    'fire': '🔥', 'hot': '🔥', 'trending': '🔥',
+    'info': 'ℹ️', 'information': 'ℹ️',
+    'warning': '⚠️', 'caution': '⚠️',
+    'question': '❓', 'faq': '❓',
+    // Documents
+    'document': '📄', 'doc': '📄', 'file': '📄',
+    'folder': '📁', 'directory': '📁',
+    'presentation': '📽️', 'slide': '📑',
+    'note': '📝', 'notes': '📝',
+    'clipboard': '📋', 'list': '📋',
+    'bookmark': '🔖', 'tag': '🏷️',
+    // Finance
+    'money': '💰', 'finance': '💰', 'payment': '💳',
+    'currency': '💲', 'dollar': '💵',
+    'bank': '🏦', 'wallet': '👛',
+    'shopping': '🛒', 'cart': '🛒',
+    // Location
+    'location': '📍', 'pin': '📍', 'map': '🗺️',
+    'home': '🏠', 'office': '🏢', 'building': '🏢',
+    // Misc
+    'palette': '🎨', 'design': '🎨', 'color': '🎨',
+    'education': '🎓', 'graduation': '🎓', 'learn': '📚',
+    'book': '📖', 'library': '📚',
+    'camera': '📷', 'photo': '📷', 'image': '🖼️',
+    'video': '🎬', 'film': '🎬', 'movie': '🎬',
+    'music': '🎵', 'sound': '🔊', 'volume': '🔊',
+    'game': '🎮', 'gaming': '🎮',
+    'leaf': '🍃', 'nature': '🌿', 'environment': '🌍',
+    'recycle': '♻️', 'sustainable': '♻️',
+    'truck': '🚚', 'delivery': '🚚', 'shipping': '🚚',
+    'airplane': '✈️', 'travel': '✈️', 'transport': '🚂',
+    'science': '🔬', 'lab': '🧪', 'research': '🔬',
+    'bulb': '💡', 'key': '🔑',
+  };
+
+  /** Fallback icon when no emoji match exists */
+  public static ICON_FALLBACK = '✦';
+
+  /**
+   * Convert an icon name string to an emoji or Unicode symbol.
+   * Case-insensitive matching, falls back to a diamond bullet if unknown.
+   */
+  public static iconToEmoji(iconName?: string): string {
+    if (!iconName || typeof iconName !== 'string') return SlideExporter.ICON_FALLBACK;
+    const key = iconName.trim().toLowerCase()
+      .replace(/[\s_-]+/g, '-')       // normalize separators
+      .replace(/^(icon|i)-/, '');       // strip leading "icon-" or "i-"
+    return SlideExporter.ICON_MAP[key] || SlideExporter.ICON_FALLBACK;
+  }
+
+  /**
    * Helper to parse Markdown bold (**...**) and italic (*...*) strings into PPTX text runs
    */
   public static parseMarkdownToRuns(
@@ -1471,13 +1572,10 @@ export class SlideExporter {
       this.renderCleanText(pptSlide, bullets, theme, textColor, startY, colH);
     }
 
-    const image = content.visuals?.images?.[0];
+    // Try multiple image sources: visuals.images, imageGrid, or content.visuals?.images
+    const image = content.visuals?.images?.[0] || content.imageGrid?.[0];
     if (image) {
-      pptSlide.addImage({
-        data: image.base64,
-        path: image.url,
-        x: imageX, y: startY, w: colW, h: colH,
-      });
+      this.addImageSafe(pptSlide, image, imageX, startY, colW, colH);
     } else {
       pptSlide.addText('🖼️  [ Visual Media ]', {
         x: imageX, y: startY + colH / 2 - 0.4, w: colW, h: 0.8,
@@ -1488,6 +1586,12 @@ export class SlideExporter {
   }
 
   // ─── NEW LAYOUT RENDERERS ───────────────────────────────
+
+  /** Default chart color palette used when LLM doesn't provide colors — complements theme colors */
+  private static CHART_COLOR_SET = [
+    '#0066CC', '#00AAFF', '#10B981', '#F59E0B', '#EF4444',
+    '#8B5CF6', '#EC4899', '#14B8A6', '#F97316', '#6366F1',
+  ];
 
   private renderChartSlide(pptSlide: any, content: any, theme: ThemeLayout, textColor: string, startY: number): void {
     const colors = theme.colors;
@@ -1509,6 +1613,12 @@ export class SlideExporter {
       return;
     }
 
+    // Chart colors: prefer LLM-provided, then theme colors, then fallback palette
+    const themePalette = [colors.primary, colors.secondary, colors.accent, '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#14B8A6', '#F97316'];
+    const chartColors = (chart.colors && chart.colors.length > 0)
+      ? chart.colors.map((c: string) => this.hex(c))
+      : series.map((_: any, i: number) => this.hex(themePalette[i % themePalette.length]));
+
     // Fixed height for chart to avoid overlapping with text
     const chartH = 3.2;
     pptSlide.addChart(chart.type, series, {
@@ -1518,7 +1628,7 @@ export class SlideExporter {
       h: chartH,
       chartTitle: chart.title,
       showLegend: true,
-      chartColors: (chart.colors || []).map((color: string) => this.hex(color)),
+      chartColors,
     });
 
     // Render bullets if available, ensuring they don't overlap with the chart
@@ -1529,6 +1639,13 @@ export class SlideExporter {
     }
   }
 
+  /**
+   * Convert chart data into pptxgenjs series format.
+   * Handles multiple data shapes from LLM:
+   *   - [{ label, value }] -> single series
+   *   - [{ category, series1, series2 }] -> multi-series
+   *   - Pre-formatted [{ labels: [], values: [] }] -> pass through
+   */
   private toPptxChartSeries(chart: any): Array<{ name: string; labels: string[]; values: number[] }> {
     const data = Array.isArray(chart?.data) ? chart.data : [];
     if (data.length === 0) return [];
@@ -1536,13 +1653,89 @@ export class SlideExporter {
       return data;
     }
 
-    const labelKey = Object.keys(data[0] || {}).find(key => typeof data[0][key] === 'string') || 'label';
-    const valueKeys = Object.keys(data[0] || {}).filter(key => key !== labelKey && typeof data[0][key] === 'number');
-    return valueKeys.map(key => ({
-      name: key === 'value' ? (chart.title || 'Value') : key,
-      labels: data.map((item: any, index: number) => String(item[labelKey] ?? chart.labels?.[index] ?? index + 1)),
-      values: data.map((item: any) => Number(item[key]) || 0),
-    }));
+    // Group keys by value type: strings = labels, numbers = value series
+    const firstItem = data[0];
+    const allKeys = Object.keys(firstItem || {});
+
+    // Skip internal/non-data keys
+    const ignoreKeys = new Set(['id', '_id', 'key', 'index', '__proto__']);
+
+    // Heuristic: the "label" key is the first string-typed key that isn't a known ignore key
+    const labelKey = allKeys.find(k =>
+      typeof firstItem[k] === 'string' &&
+      !ignoreKeys.has(k.toLowerCase()) &&
+      !/^(value|values?|amount|count|total|sum|number|num|series)/i.test(k)
+    );
+
+    if (labelKey) {
+      // Single label + one or more numeric value series
+      const valueKeys = allKeys.filter(k =>
+        k !== labelKey && typeof firstItem[k] === 'number'
+      );
+      if (valueKeys.length > 0) {
+        return valueKeys.map(key => ({
+          name: key === 'value' ? (chart.title || 'Value') : key,
+          labels: data.map((item: any, i: number) => {
+            const raw = item[labelKey];
+            if (raw != null) return String(raw);
+            return chart.labels?.[i] != null ? String(chart.labels[i]) : `Item ${i + 1}`;
+          }),
+          values: data.map((item: any) => {
+            const v = item[key];
+            return (typeof v === 'number' && !isNaN(v)) ? v : 0;
+          }),
+        }));
+      }
+    }
+
+    // Fallback: no string label key — try numeric-only data
+    const numericKeys = allKeys.filter(k => typeof firstItem[k] === 'number');
+    if (numericKeys.length >= 1) {
+      // Use the first numeric key as labels, rest as values
+      const labelKey2 = numericKeys[0];
+      const valueKeys2 = numericKeys.slice(1);
+      if (valueKeys2.length > 0) {
+        return valueKeys2.map(key => ({
+          name: key === 'value' ? (chart.title || 'Value') : key,
+          labels: data.map((item: any) => String(item[labelKey2] ?? '')),
+          values: data.map((item: any) => {
+            const v = item[key];
+            return (typeof v === 'number' && !isNaN(v)) ? v : 0;
+          }),
+        }));
+      }
+      // Single numeric key — treat all as one series with index labels
+      return [{
+        name: chart.title || 'Data',
+        labels: data.map((_: any, i: number) => chart.labels?.[i] || `#${i + 1}`),
+        values: data.map((item: any) => { const v = item[numericKeys[0]]; return (typeof v === 'number' && !isNaN(v)) ? v : 0; }),
+      }];
+    }
+
+    // Last resort: try any key starting with "label" or "value"
+    const anyLabelKey = allKeys.find(k => /^label/i.test(k));
+    const anyValueKey = allKeys.find(k => /^value/i.test(k) || /^(amount|count|total)/i.test(k));
+    if (anyLabelKey && anyValueKey) {
+      return [{
+        name: chart.title || 'Data',
+        labels: data.map((item: any) => String(item[anyLabelKey] ?? '')),
+        values: data.map((item: any) => { const v = item[anyValueKey]; return (typeof v === 'number' && !isNaN(v)) ? v : 0; }),
+      }];
+    }
+
+    return [];
+  }
+
+  /** Determine if a hex color is light (returns true for light colors) */
+  private isLightColor(hex: string): boolean {
+    const c = hex.replace('#', '');
+    if (c.length < 6) return false;
+    const r = parseInt(c.slice(0, 2), 16);
+    const g = parseInt(c.slice(2, 4), 16);
+    const b = parseInt(c.slice(4, 6), 16);
+    // Perceived luminance (W3C relative luminance formula simplified)
+    const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+    return luminance > 0.6;
   }
 
   private renderStatsSlide(pptSlide: any, content: any, theme: ThemeLayout, textColor: string, startY: number): void {
@@ -1568,35 +1761,39 @@ export class SlideExporter {
       const x = 0.8 + col * (cardWidth + margin);
       const y = startY + row * (cardHeight + margin);
 
+      const bgHex = stat.color || colors.accent || colors.primary;
+      const lightBg = this.isLightColor(bgHex);
+      const cardTextColor = lightBg ? '#1A1A2E' : '#FFFFFF';
+
       // Card background
       pptSlide.addShape('rect', {
         x, y, w: cardWidth, h: cardHeight,
-        fill: { color: this.hex(stat.color || colors.accent || colors.primary) },
+        fill: { color: this.hex(bgHex) },
         line: { color: this.hex(colors.primary), width: 1 },
       });
 
+      // Emoji icon — large, centered at top of card
+      if (stat.icon) {
+        pptSlide.addText(SlideExporter.iconToEmoji(stat.icon), {
+          x: x + 0.2, y: y + 0.1, w: cardWidth - 0.4, h: 0.55,
+          fontSize: 22, fontFace: 'Segoe UI Emoji, Apple Color Emoji, Arial',
+          color: cardTextColor, align: 'center',
+        });
+      }
+
       // Stat value
       pptSlide.addText(String(stat.value), {
-        x: x + 0.2, y: y + 0.2, w: cardWidth - 0.4, h: 0.8,
+        x: x + 0.2, y: y + (stat.icon ? 0.55 : 0.2), w: cardWidth - 0.4, h: 0.8,
         fontSize: 24, fontFace: theme.fonts.title,
-        color: '#FFFFFF', bold: true, align: 'center',
+        color: cardTextColor, bold: true, align: 'center',
       });
 
       // Stat label
       pptSlide.addText(stat.label, {
-        x: x + 0.2, y: y + 1.0, w: cardWidth - 0.4, h: 0.6,
+        x: x + 0.2, y: y + (stat.icon ? 1.3 : 1.0), w: cardWidth - 0.4, h: 0.6,
         fontSize: 12, fontFace: theme.fonts.body,
-        color: '#FFFFFF', align: 'center',
+        color: cardTextColor, align: 'center',
       });
-
-      // Icon placeholder
-      if (stat.icon) {
-        pptSlide.addText(`[${stat.icon}]`, {
-          x: x + cardWidth - 0.6, y: y + cardHeight - 0.4, w: 0.4, h: 0.4,
-          fontSize: 10, fontFace: theme.fonts.body,
-          color: '#FFFFFF', align: 'center',
-        });
-      }
     });
   }
 
@@ -1624,10 +1821,12 @@ export class SlideExporter {
     timeline.forEach((item: any, index: number) => {
       const y = startY + index * itemHeight;
 
-      // Timeline dot
-      pptSlide.addShape('circle', {
-        x: lineX - dotRadius, y: y, w: dotRadius * 2, h: dotRadius * 2,
-        fill: { color: this.hex(colors.primary) },
+      // Timeline dot with icon
+      const iconEmoji = SlideExporter.iconToEmoji(item.icon);
+      pptSlide.addText(iconEmoji, {
+        x: 0.05, y: y - 0.05, w: 0.4, h: 0.4,
+        fontSize: 15, fontFace: 'Segoe UI Emoji, Apple Color Emoji, Arial',
+        align: 'center',
       });
 
       // Date
@@ -1664,42 +1863,99 @@ export class SlideExporter {
       return;
     }
 
-    // Render flowchart as a visual diagram
-    pptSlide.addText('[Flowchart Diagram]', {
-      x: 1.0, y: startY + 0.5, w: 11.3, h: 1.0,
-      fontSize: 20, fontFace: theme.fonts.title,
-      color: this.hex(colors.primary), bold: true, align: 'center',
-    });
+    const isHoriz = flowchart.direction === 'horizontal';
 
-    // Render nodes
-    const nodeYStart = startY + 1.5;
+    // Build a map of node id → rendered position
+    const nodePositions = new Map<string, { x: number; y: number; w: number; h: number }>();
+    const nodeH = 0.6;
+    const nodeW = 2.8;
     const nodeSpacing = 0.8;
+    const startX = 0.8;
+    const startNodeY = startY + 0.4;
+
+    function getNodeTypeColor(type?: string): string {
+      if (type === 'start') return colors.accent;
+      if (type === 'end') return colors.secondary || colors.accent;
+      if (type === 'decision') return '#F59E0B';
+      if (type === 'input' || type === 'output') return colors.secondary || colors.primary;
+      return colors.primary;
+    }
 
     flowchart.nodes.forEach((node: any, index: number) => {
-      const y = nodeYStart + index * nodeSpacing;
-      const nodeColor = node.type === 'start' ? colors.accent :
-                       node.type === 'end' ? colors.secondary :
-                       colors.primary;
+      const nx = isHoriz ? startX + index * (nodeW + nodeSpacing) : startX + 0.2;
+      const ny = isHoriz ? startNodeY : startNodeY + index * (nodeH + nodeSpacing);
+      const shape = node.type === 'decision' ? 'diamond' : 'roundRect';
 
-      pptSlide.addShape('rect', {
-        x: 2.0, y: y, w: 9.3, h: 0.6,
-        fill: { color: this.hex(nodeColor) },
-        line: { color: this.hex(colors.primary), width: 1 },
+      nodePositions.set(node.id, { x: nx, y: ny, w: nodeW, h: nodeH });
+
+      pptSlide.addShape(shape, {
+        x: nx, y: ny, w: nodeW, h: nodeH,
+        fill: { color: this.hex(getNodeTypeColor(node.type)) },
+        rectRadius: node.type === 'decision' ? 0 : 0.1,
       });
 
       pptSlide.addText(node.label, {
-        x: 2.2, y: y + 0.1, w: 8.9, h: 0.4,
-        fontSize: 12, fontFace: theme.fonts.body,
-        color: '#FFFFFF', align: 'center',
+        x: nx, y: ny, w: nodeW, h: nodeH,
+        fontSize: isHoriz ? 9 : 10,
+        fontFace: theme.fonts.body,
+        color: '#FFFFFF', bold: true,
+        align: 'center', valign: 'middle',
+        margin: [2, 4, 2, 4],
       });
     });
 
-    // Render edges as connecting lines
+    // Render edges as actual connecting arrows/lines
     if (flowchart.edges && flowchart.edges.length > 0) {
-      pptSlide.addText(`[${flowchart.edges.length} connections]`, {
-        x: 1.0, y: startY + 5.0, w: 11.3, h: 0.4,
-        fontSize: 11, fontFace: theme.fonts.body,
-        color: this.hex(textColor), align: 'center',
+      flowchart.edges.forEach((edge: any) => {
+        const from = nodePositions.get(edge.from);
+        const to = nodePositions.get(edge.to);
+        if (!from || !to) return;
+
+        if (isHoriz) {
+          // Horizontal: draw line from right edge of 'from' to left edge of 'to'
+          const lineX = from.x + from.w;
+          const lineY = from.y + from.h / 2;
+          pptSlide.addShape('line', {
+            x: lineX, y: lineY, w: to.x - lineX, h: 0,
+            line: { color: this.hex(colors.primary), width: 1.5, dashType: 'solid' },
+          });
+          // Arrow tip
+          pptSlide.addText('▶', {
+            x: to.x - 0.2, y: lineY - 0.15, w: 0.3, h: 0.3,
+            fontSize: 10, color: this.hex(colors.primary),
+            align: 'center',
+          });
+          // Edge label
+          if (edge.label) {
+            pptSlide.addText(edge.label, {
+              x: lineX, y: lineY - 0.3, w: to.x - lineX, h: 0.3,
+              fontSize: 8, fontFace: theme.fonts.body,
+              color: this.hex(colors.textLight), align: 'center',
+            });
+          }
+        } else {
+          // Vertical: draw line from bottom of 'from' to top of 'to'
+          const lineX = from.x + from.w / 2;
+          const lineY = from.y + from.h;
+          pptSlide.addShape('line', {
+            x: lineX, y: lineY, w: 0, h: to.y - lineY,
+            line: { color: this.hex(colors.primary), width: 1.5, dashType: 'solid' },
+          });
+          // Arrow tip
+          pptSlide.addText('▼', {
+            x: lineX - 0.15, y: to.y - 0.25, w: 0.3, h: 0.3,
+            fontSize: 10, color: this.hex(colors.primary),
+            align: 'center',
+          });
+          // Edge label
+          if (edge.label) {
+            pptSlide.addText(edge.label, {
+              x: lineX + 0.15, y: lineY, w: 1.5, h: to.y - lineY,
+              fontSize: 8, fontFace: theme.fonts.body,
+              color: this.hex(colors.textLight), align: 'left', valign: 'middle',
+            });
+          }
+        }
       });
     }
   }
@@ -1795,8 +2051,20 @@ export class SlideExporter {
       currentY += 0.6;
     });
 
-    // Render images, charts, and icons as placeholders
-    [...images, ...charts, ...icons].forEach((element: any) => {
+    // Render icons as emoji symbols (not raw text)
+    if (icons.length > 0) {
+      const iconEmojis = icons.map((el: any) => SlideExporter.iconToEmoji(el.content || el.label)).join('  ');
+      pptSlide.addText(iconEmojis, {
+        x: 1.0, y: currentY, w: 11.3, h: 0.6,
+        fontSize: 24, fontFace: 'Segoe UI Emoji, Apple Color Emoji, Arial',
+        color: this.hex(colors.primary),
+        align: 'center',
+      });
+      currentY += 0.7;
+    }
+
+    // Render remaining elements (images, charts) as structured placeholders
+    [...images, ...charts].forEach((element: any) => {
       pptSlide.addText(`[${element.type}: ${element.content || element.label || 'Visual Element'}]`, {
         x: 1.0, y: currentY, w: 11.3, h: 0.5,
         fontSize: 12, fontFace: theme.fonts.body,
@@ -1830,6 +2098,7 @@ export class SlideExporter {
     const cardHeight = 2.5;
     const margin = 0.2;
 
+    // Use addImageSafe to handle data/path/url correctly
     images.forEach((img: any, index: number) => {
       const row = Math.floor(index / cols);
       const col = index % cols;
@@ -1837,11 +2106,7 @@ export class SlideExporter {
       const x = 0.8 + col * (cardWidth + margin);
       const y = startY + 1.2 + row * (cardHeight + margin);
 
-      pptSlide.addImage({
-        data: img.base64,
-        path: img.url,
-        x, y, w: cardWidth, h: cardHeight,
-      });
+      this.addImageSafe(pptSlide, img, x, y, cardWidth, cardHeight);
     });
   }
 
@@ -2135,6 +2400,25 @@ export class SlideExporter {
       fontSize: 10, fontFace: theme.fonts.body,
       color: this.hex(colors.textLight || '#666666'), align: 'center',
     });
+  }
+
+  /**
+   * Safely add an image to a slide.
+   * pptxgenjs addImage accepts EITHER `data` (base64/dataUri) OR `path` (file path/URL), not both.
+   */
+  private addImageSafe(pptSlide: any, img: any, x: number, y: number, w: number, h: number): void {
+    const opts: any = { x, y, w, h };
+    if (img.base64) {
+      opts.data = img.base64;
+    } else if (img.path) {
+      opts.path = img.path;
+    } else if (img.url) {
+      opts.path = img.url;
+    } else {
+      // No image data available — skip silently; the caller already handles fallback text
+      return;
+    }
+    pptSlide.addImage(opts);
   }
 
   private hex(color: string): string {

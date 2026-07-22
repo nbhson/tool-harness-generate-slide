@@ -1087,24 +1087,85 @@ EXAMPLE OUTPUT for flowchart layout:
   }
 
   /**
-   * Add fallback data for special layouts when LLM doesn't provide specific content
+   * Derive a deterministic numeric seed from a string (0-99).
+   * Used to vary fallback visual data per slide title.
+   */
+  private seedFromTitle(title: string): number {
+    let hash = 0;
+    for (let i = 0; i < title.length; i++) {
+      const chr = title.charCodeAt(i);
+      hash = ((hash << 5) - hash) + chr;
+      hash |= 0; // Convert to 32bit integer
+    }
+    return ((Math.abs(hash) * 13 + 7) % 100);
+  }
+
+  /**
+   * Pick an item from an array based on a seed (cycle-safe).
+   */
+  private pickVariation<T>(items: T[], seed: number, offset: number = 0): T {
+    return items[(seed + offset) % items.length];
+  }
+
+  /**
+   * Generate a set of numeric values for fallback charts based on a title seed.
+   * Produces different patterns so not every fallback chart looks the same.
+   */
+  private generateChartValues(seed: number): number[] {
+    const baseSet = [
+      [45, 67, 82, 95],
+      [30, 55, 70, 90],
+      [85, 72, 60, 45],
+      [20, 45, 65, 88],
+      [60, 45, 75, 55],
+      [92, 78, 85, 97],
+      [15, 35, 50, 78],
+      [40, 60, 80, 60],
+      [70, 65, 90, 85],
+      [55, 80, 40, 70],
+      [33, 47, 62, 76],
+      [25, 50, 38, 65],
+    ];
+    return baseSet[seed % baseSet.length];
+  }
+
+  /**
+   * Pick a chart type based on title keywords and seed.
+   */
+  private pickChartType(title: string, seed: number): 'bar' | 'line' | 'pie' | 'area' | 'doughnut' | 'radar' | 'scatter' {
+    if (/trend|growth|progress|increase|tăng|phát triển|growth rate/i.test(title)) return 'line';
+    if (/distribution|share|split|phân bổ|tỷ lệ|composition/i.test(title)) return 'pie';
+    if (/compare|comparison|so sánh|đối chiếu|versus|vs/i.test(title)) return 'bar';
+    if (/over time|history|history|timeline|progress|theo thời gian/i.test(title)) return 'area';
+    if (/radar|skill|competency|assessment|kỹ năng|đánh giá/i.test(title)) return 'radar';
+    if (/breakdown|revenue|sales|doanh thu|budget|ngân sách/i.test(title)) return 'doughnut';
+    const types: ('bar' | 'line' | 'pie' | 'area' | 'doughnut' | 'radar' | 'scatter')[] = ['bar', 'bar', 'line', 'pie', 'area', 'doughnut'];
+    return types[seed % types.length];
+  }
+
+  /**
+   * Add fallback data for special layouts when LLM doesn't provide specific content.
+   * Data varies based on the slide title to avoid every fallback looking identical.
    */
   private addLayoutFallbackData(content: SlideContent, layout: SlideLayout, title: string): void {
     const isVietnamese = /[àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ]/i.test(title);
+    const seed = this.seedFromTitle(title);
+    const val = this.generateChartValues(seed);
 
     switch (layout) {
       case 'chart':
         (content as any).chart = {
-          type: 'bar',
+          type: this.pickChartType(title, seed),
           data: [
-            { label: isVietnamese ? 'Qúy 1' : 'Q1', value: 45 },
-            { label: isVietnamese ? 'Qúy 2' : 'Q2', value: 67 },
-            { label: isVietnamese ? 'Qúy 3' : 'Q3', value: 82 },
-            { label: isVietnamese ? 'Qúy 4' : 'Q4', value: 95 },
+            { label: isVietnamese ? 'Q.1' : 'Q1', value: val[0], target: val[0] - 10 },
+            { label: isVietnamese ? 'Q.2' : 'Q2', value: val[1], target: val[1] - 8 },
+            { label: isVietnamese ? 'Q.3' : 'Q3', value: val[2], target: val[2] - 12 },
+            { label: isVietnamese ? 'Q.4' : 'Q4', value: val[3], target: val[3] - 5 },
+            { label: isVietnamese ? 'C.Năm' : 'Year', value: val.reduce((a, b) => a + b) / 4, target: val.reduce((a, b) => a + b) / 5 },
           ],
-          title: isVietnamese ? 'Doanh thu theo quý' : 'Quarterly Revenue',
-          labels: isVietnamese ? ['Qúy 1', 'Qúy 2', 'Qúy 3', 'Qúy 4'] : ['Q1', 'Q2', 'Q3', 'Q4'],
-          colors: ['#3B82F6', '#10B981', '#F59E0B', '#EF4444'],
+          title: title.substring(0, 50),
+          labels: [isVietnamese ? 'Q.1' : 'Q1', isVietnamese ? 'Q.2' : 'Q2', isVietnamese ? 'Q.3' : 'Q3', isVietnamese ? 'Q.4' : 'Q4', isVietnamese ? 'Tổng' : 'Total'],
+          colors: ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'],
         };
         break;
 
@@ -1114,38 +1175,39 @@ EXAMPLE OUTPUT for flowchart layout:
             ? ['STT', 'Tiêu chí', 'Giá trị']
             : ['No.', 'Criteria', 'Value'],
           rows: [
-            ['1', isVietnamese ? 'Hiệu suất' : 'Performance', isVietnamese ? '95%' : '95%'],
-            ['2', isVietnamese ? 'Độ tin cậy' : 'Reliability', isVietnamese ? '99.9%' : '99.9%'],
-            ['3', isVietnamese ? 'Thời gian đáp ứng' : 'Response Time', isVietnamese ? '<100ms' : '<100ms'],
+            ['1', isVietnamese ? 'Chỉ số A' : `Metric ${seed % 20 + 1}`, `${val[0]}%`],
+            ['2', isVietnamese ? 'Chỉ số B' : `Metric ${seed % 20 + 2}`, `${val[1]}%`],
+            ['3', isVietnamese ? 'Chỉ số C' : `Metric ${seed % 20 + 3}`, `${val[2]}%`],
+            ['4', isVietnamese ? 'Chỉ số D' : `Metric ${seed % 20 + 4}`, `${val[3]}%`],
           ],
-          title: isVietnamese ? 'Thông số kỹ thuật' : 'Technical Metrics',
+          title: title.substring(0, 50),
         };
         break;
 
       case 'timeline':
         content.timeline = [
           {
-            date: '2024-01',
-            title: isVietnamese ? 'Khởi động dự án' : 'Project Kickoff',
-            description: isVietnamese ? 'Bắt đầu giai đoạn nghiên cứu và phân tích yêu cầu' : 'Began research and requirements analysis phase',
+            date: `${2023 + Math.floor(seed / 25)}-0${(seed % 3) + 1}`,
+            title: isVietnamese ? `Giai đoạn ${seed % 4 + 1}` : `Phase ${seed % 4 + 1}`,
+            description: title.length > 20 ? `${title.substring(0, 40)} — initial phase` : 'Initial research and planning phase',
             icon: 'calendar',
           },
           {
-            date: '2024-04',
-            title: isVietnamese ? 'Phát triển' : 'Development',
-            description: isVietnamese ? 'Xây dựng nguyên mẫu và thử nghiệm' : 'Prototype development and testing',
+            date: `${2023 + Math.floor(seed / 25)}-0${(seed % 3) + 4}`,
+            title: isVietnamese ? `Phát triển ${seed % 4 + 1}` : `Development ${seed % 4 + 1}`,
+            description: isVietnamese ? 'Xây dựng và phát triển các tính năng cốt lõi' : 'Building and developing core features',
             icon: 'code',
           },
           {
-            date: '2024-07',
-            title: isVietnamese ? 'Triển khai' : 'Deployment',
-            description: isVietnamese ? 'Ra mắt sản phẩm chính thức' : 'Official product launch',
+            date: `${2023 + Math.floor(seed / 25)}-0${(seed % 3) + 7}`,
+            title: isVietnamese ? `Triển khai ${seed % 4 + 1}` : `Launch ${seed % 4 + 1}`,
+            description: isVietnamese ? 'Ra mắt và triển khai tới người dùng' : 'Official launch and user rollout',
             icon: 'rocket',
           },
           {
-            date: '2024-10',
-            title: isVietnamese ? 'Tối ưu' : 'Optimization',
-            description: isVietnamese ? 'Nâng cấp và tối ưu hiệu năng' : 'Performance optimization and upgrades',
+            date: `${2023 + Math.floor(seed / 25)}-1${(seed % 3)}`,
+            title: isVietnamese ? `Tối ưu ${seed % 4 + 1}` : `Optimization ${seed % 4 + 1}`,
+            description: isVietnamese ? `Tối ưu hóa dựa trên ${isVietnamese ? 'phản hồi' : 'feedback'} và phân tích dữ liệu` : 'Performance optimization and data-driven improvements',
             icon: 'trending-up',
           },
         ];
@@ -1154,12 +1216,12 @@ EXAMPLE OUTPUT for flowchart layout:
       case 'flowchart':
         (content as any).flowchart = {
           nodes: [
-            { id: 'start', label: isVietnamese ? 'Bắt đầu' : 'Start', type: 'start', x: 0, y: 0 },
-            { id: 'input', label: isVietnamese ? 'Nhập liệu' : 'Input Data', type: 'input', x: 0, y: 100 },
-            { id: 'process', label: isVietnamese ? 'Xử lý' : 'Processing', type: 'process', x: 0, y: 200 },
-            { id: 'decision', label: isVietnamese ? 'Kiểm tra' : 'Validation', type: 'decision', x: 0, y: 300 },
-            { id: 'output', label: isVietnamese ? 'Xuất kết quả' : 'Output', type: 'output', x: 0, y: 400 },
-            { id: 'end', label: isVietnamese ? 'Kết thúc' : 'End', type: 'end', x: 0, y: 500 },
+            { id: 'start', label: isVietnamese ? 'Bắt đầu' : 'Start', type: 'start' },
+            { id: 'input', label: isVietnamese ? 'Nhập liệu' : 'Input Data', type: 'input' },
+            { id: 'process', label: isVietnamese ? 'Xử lý' : 'Processing', type: 'process' },
+            { id: 'decision', label: isVietnamese ? 'Kiểm tra' : 'Validation', type: 'decision' },
+            { id: 'output', label: isVietnamese ? 'Kết quả' : 'Output', type: 'output' },
+            { id: 'end', label: isVietnamese ? 'Kết thúc' : 'End', type: 'end' },
           ],
           edges: [
             { from: 'start', to: 'input', label: '' },
@@ -1168,7 +1230,7 @@ EXAMPLE OUTPUT for flowchart layout:
             { from: 'decision', to: 'output', label: isVietnamese ? 'Hợp lệ' : 'Valid' },
             { from: 'decision', to: 'end', label: isVietnamese ? 'Không hợp lệ' : 'Invalid' },
           ],
-          direction: 'vertical',
+          direction: seed % 2 === 0 ? 'vertical' : 'horizontal',
         };
         break;
 
@@ -1182,25 +1244,25 @@ EXAMPLE OUTPUT for flowchart layout:
           },
           {
             type: 'stat',
-            content: '45%',
+            content: `${val[0]}%`,
             position: { x: 10, y: 15, width: 25, height: 20 },
             style: { fontSize: 18, fontWeight: 'bold', color: '#3B82F6', backgroundColor: '#EFF6FF' },
           },
           {
             type: 'stat',
-            content: '67%',
+            content: `${val[1]}%`,
             position: { x: 40, y: 15, width: 25, height: 20 },
             style: { fontSize: 18, fontWeight: 'bold', color: '#10B981', backgroundColor: '#ECFDF5' },
           },
           {
             type: 'stat',
-            content: '82%',
+            content: `${val[2]}%`,
             position: { x: 70, y: 15, width: 25, height: 20 },
             style: { fontSize: 18, fontWeight: 'bold', color: '#F59E0B', backgroundColor: '#FFEDD5' },
           },
           {
             type: 'text',
-            content: isVietnamese ? 'Tăng trưởng doanh thu theo năm' : 'Year-over-year revenue growth',
+            content: isVietnamese ? 'Tăng trưởng và hiệu suất theo thời gian' : 'Growth and performance over time',
             position: { x: 0, y: 40, width: 100, height: 8 },
             style: { fontSize: 14, color: '#6B7280' },
           },
@@ -1216,28 +1278,28 @@ EXAMPLE OUTPUT for flowchart layout:
       case 'stats':
         content.stats = [
           {
-            value: '45%',
+            value: `${val[0]}%`,
             label: isVietnamese ? 'Tăng trưởng' : 'Growth',
             icon: 'trending-up',
-            color: '#10B981',
+            color: seed % 2 === 0 ? '#10B981' : '#3B82F6',
           },
           {
-            value: '99.9%',
-            label: isVietnamese ? 'Uptime' : 'Uptime',
-            icon: 'check-circle',
-            color: '#3B82F6',
+            value: `${val[1]}+`,
+            label: isVietnamese ? 'Người dùng' : 'Users',
+            icon: 'users',
+            color: seed % 2 === 0 ? '#3B82F6' : '#8B5CF6',
           },
           {
-            value: '<100ms',
+            value: `${val[2]}ms`,
             label: isVietnamese ? 'Đáp ứng' : 'Response Time',
             icon: 'clock',
             color: '#F59E0B',
           },
           {
-            value: '10K+',
-            label: isVietnamese ? 'Người dùng' : 'Users',
-            icon: 'users',
-            color: '#EF4444',
+            value: `${100 - (seed % 30)}%`,
+            label: isVietnamese ? 'Độ tin cậy' : 'Uptime',
+            icon: 'check-circle',
+            color: seed % 2 === 0 ? '#EF4444' : '#10B981',
           },
         ];
         break;
