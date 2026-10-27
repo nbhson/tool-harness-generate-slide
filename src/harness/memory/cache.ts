@@ -35,7 +35,7 @@ interface CacheEntry<T> {
  *   const result = await cache.getOrCompute(promptHash, () => callLLM(prompt));
  */
 export class ResponseCache {
-  private cache = new Map<string, CacheEntry<any>>();
+  private cache = new Map<string, CacheEntry<unknown>>();
   private config: CacheConfig;
   private cleanupInterval: ReturnType<typeof setInterval> | null = null;
 

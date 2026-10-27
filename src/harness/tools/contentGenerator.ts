@@ -22,9 +22,9 @@ import { RequestCoalescer } from '../../utils/requestCoalescer';
 import { SlideExporter } from './slideExporter';
 
 // Polyfill for global fetch in Node.js environments
-import fetch from 'node-fetch';
+import fetch, { type Response } from 'node-fetch';
 if (!globalThis.fetch) {
-  globalThis.fetch = fetch as any;
+  globalThis.fetch = fetch as unknown as typeof globalThis.fetch;
 }
 
 const log = logger.child('ContentGenerator');
@@ -43,6 +43,14 @@ export interface ContentGeneratorConfig {
   apiKey?: string;
   model: string;
   fallbackModel: string;
+}
+
+/** Minimal shape of an OpenAI-compatible chat completion response. */
+interface LLMChatResponse {
+  choices?: Array<{
+    message?: { content?: string };
+    delta?: { content?: string };
+  }>;
 }
 
 export class ContentGenerator {
@@ -582,7 +590,7 @@ EXAMPLE OUTPUT for flowchart layout:
       stream: Boolean(onStreamChunk),
     };
 
-    let response: any;
+    let response: Response;
     try {
       response = await fetch(url, {
         method: 'POST',
@@ -646,14 +654,14 @@ EXAMPLE OUTPUT for flowchart layout:
    * Handles both JSON responses and SSE stream format.
    */
   private async extractContent(
-    response: any,
+    response: Response,
     onStreamChunk?: (chunk: string) => void,
   ): Promise<string> {
     const text = await response.text();
 
     // Try standard JSON first
     try {
-      const data = JSON.parse(text) as any;
+      const data = JSON.parse(text) as LLMChatResponse;
       const content = data.choices?.[0]?.message?.content || '';
       if (content) {
         if (onStreamChunk) onStreamChunk(content);
@@ -734,10 +742,10 @@ EXAMPLE OUTPUT for flowchart layout:
 
         // Parse layout-specific data
         if (parsed.chart) {
-          (slideContent as any).chart = this.parseChart(parsed.chart);
+          slideContent.chart = this.parseChart(parsed.chart);
         }
         if (parsed.table) {
-          (slideContent as any).table = this.parseTable(parsed.table);
+          slideContent.table = this.parseTable(parsed.table);
         }
         if (parsed.timeline) {
           slideContent.timeline = this.parseTimeline(parsed.timeline);
@@ -787,131 +795,159 @@ EXAMPLE OUTPUT for flowchart layout:
     return this.generateTemplateContent(plan);
   }
 
-  private parseChart(data: any): SlideChart {
+  private parseChart(data: unknown): SlideChart {
+    const raw = (data ?? {}) as Partial<SlideChart> & { type?: string };
     return {
-      type: (data.type || 'bar') as any,
-      data: data.data || [],
-      title: data.title,
-      labels: data.labels,
-      colors: data.colors,
+      type: (raw.type || 'bar') as SlideChart['type'],
+      data: raw.data || [],
+      title: raw.title,
+      labels: raw.labels,
+      colors: raw.colors,
     };
   }
 
-  private parseTable(data: any): { headers: string[]; rows: string[][]; title?: string } {
+  private parseTable(
+    data: unknown,
+  ): { headers: string[]; rows: string[][]; title?: string } {
+    const raw = (data ?? {}) as Partial<{ headers: string[]; rows: string[][]; title?: string }>;
     return {
-      headers: data.headers || [],
-      rows: data.rows || [],
-      title: data.title,
+      headers: raw.headers || [],
+      rows: raw.rows || [],
+      title: raw.title,
     };
   }
 
-  private parseTimeline(data: any): TimelineItem[] {
+  private parseTimeline(data: unknown): TimelineItem[] {
     if (!Array.isArray(data)) return [];
-    return data.map((item: any) => ({
-      date: item.date || '',
-      title: item.title || '',
-      description: item.description || '',
-      icon: item.icon,
-    }));
+    return data.map((raw) => {
+      const item = (raw ?? {}) as Partial<TimelineItem>;
+      return {
+        date: item.date || '',
+        title: item.title || '',
+        description: item.description || '',
+        icon: item.icon,
+      };
+    });
   }
 
-  private parseFlowchart(data: any): Flowchart {
+  private parseFlowchart(data: unknown): Flowchart {
+    const raw = (data ?? {}) as Partial<Flowchart>;
     return {
-      nodes: (data.nodes || []).map((n: any) => ({
+      nodes: (raw.nodes || []).map((n) => ({
         id: n.id || '',
         label: n.label || '',
         type: n.type,
         x: n.x,
         y: n.y,
       })),
-      edges: (data.edges || []).map((e: any) => ({
+      edges: (raw.edges || []).map((e) => ({
         from: e.from || '',
         to: e.to || '',
         label: e.label,
       })),
-      direction: data.direction,
+      direction: raw.direction,
     };
   }
 
-  private parseInfographic(data: any): InfographicElement[] {
+  private parseInfographic(data: unknown): InfographicElement[] {
     if (!Array.isArray(data)) return [];
-    return data.map((item: any) => ({
-      type: item.type || 'text',
-      content: item.content || '',
-      position: item.position || { x: 0, y: 0, width: 100, height: 50 },
-      style: item.style,
-    }));
+    return data.map((raw) => {
+      const item = (raw ?? {}) as Partial<InfographicElement>;
+      return {
+        type: item.type || 'text',
+        content: item.content || '',
+        position: item.position || { x: 0, y: 0, width: 100, height: 50 },
+        style: item.style,
+      };
+    });
   }
 
-  private parseStats(data: any): StatItem[] {
+  private parseStats(data: unknown): StatItem[] {
     if (!Array.isArray(data)) return [];
-    return data.map((item: any) => ({
-      value: item.value || '',
-      label: item.label || '',
-      icon: item.icon,
-      color: item.color,
-    }));
+    return data.map((raw) => {
+      const item = (raw ?? {}) as Partial<StatItem>;
+      return {
+        value: item.value || '',
+        label: item.label || '',
+        icon: item.icon,
+        color: item.color,
+      };
+    });
   }
 
-  private parseFAQ(data: any): FAQItem[] {
+  private parseFAQ(data: unknown): FAQItem[] {
     if (!Array.isArray(data)) return [];
-    return data.map((item: any) => ({
-      question: item.question || '',
-      answer: item.answer || '',
-    }));
+    return data.map((raw) => {
+      const item = (raw ?? {}) as Partial<FAQItem>;
+      return {
+        question: item.question || '',
+        answer: item.answer || '',
+      };
+    });
   }
 
-  private parseTestimonials(data: any): TestimonialItem[] {
+  private parseTestimonials(data: unknown): TestimonialItem[] {
     if (!Array.isArray(data)) return [];
-    return data.map((item: any) => ({
-      quote: item.quote || '',
-      author: item.author || '',
-      title: item.title,
-      company: item.company,
-      avatar: item.avatar,
-    }));
+    return data.map((raw) => {
+      const item = (raw ?? {}) as Partial<TestimonialItem>;
+      return {
+        quote: item.quote || '',
+        author: item.author || '',
+        title: item.title,
+        company: item.company,
+        avatar: item.avatar,
+      };
+    });
   }
 
-  private parsePricing(data: any): PricingItem[] {
+  private parsePricing(data: unknown): PricingItem[] {
     if (!Array.isArray(data)) return [];
-    return data.map((item: any) => ({
-      name: item.name || '',
-      price: item.price || '',
-      period: item.period,
-      features: item.features || [],
-      highlighted: item.highlighted || false,
-      buttonText: item.buttonText || 'Get Started',
-    }));
+    return data.map((raw) => {
+      const item = (raw ?? {}) as Partial<PricingItem>;
+      return {
+        name: item.name || '',
+        price: item.price || '',
+        period: item.period,
+        features: item.features || [],
+        highlighted: item.highlighted || false,
+        buttonText: item.buttonText || 'Get Started',
+      };
+    });
   }
 
-  private parseCode(data: any): CodeBlock {
+  private parseCode(data: unknown): CodeBlock {
+    const raw = (data ?? {}) as Partial<CodeBlock>;
     return {
-      language: data.language || 'javascript',
-      code: data.code || '',
-      title: data.title,
-      lineNumbers: data.lineNumbers || true,
+      language: raw.language || 'javascript',
+      code: raw.code || '',
+      title: raw.title,
+      lineNumbers: raw.lineNumbers || true,
     };
   }
 
-  private parseVideo(data: any): VideoEmbed {
+  private parseVideo(data: unknown): VideoEmbed {
+    const raw = (data ?? {}) as Partial<VideoEmbed> & { type?: string };
     return {
-      url: data.url || '',
-      type: (data.type || 'youtube') as any,
-      title: data.title,
-      poster: data.poster,
-      autoplay: data.autoplay || false,
-      controls: data.controls !== false,
+      url: raw.url || '',
+      type: (raw.type || 'youtube') as VideoEmbed['type'],
+      title: raw.title,
+      poster: raw.poster,
+      autoplay: raw.autoplay || false,
+      controls: raw.controls !== false,
     };
   }
 
-  private parseImageGrid(data: any): SlideImage[] {
+  private parseImageGrid(data: unknown): SlideImage[] {
     if (!Array.isArray(data)) return [];
-    return data.map((item: any) => ({
-      url: item.url,
-      base64: item.base64,
-      alt: item.alt || '',
-      position: item.position,
-    }));
+    return data.map((raw) => {
+      const item = (raw ?? {}) as Partial<SlideImage>;
+      return {
+        url: item.url,
+        base64: item.base64,
+        alt: item.alt || '',
+        position: item.position,
+      };
+    });
   }
 
   private parseOutlineResponse(response: string): SlidePlan[] {
@@ -923,26 +959,26 @@ EXAMPLE OUTPUT for flowchart layout:
       // Try to find JSON array
       const arrayJson = this.extractBalancedJson(cleaned, '[', ']');
       if (arrayJson) {
-        const parsed = JSON.parse(arrayJson);
+        const parsed = JSON.parse(arrayJson) as unknown;
         if (Array.isArray(parsed) && parsed.length > 0) {
           return parsed
-            .filter((item: any) => item && typeof item === 'object')
-            .map((item: any) => {
+            .filter((item): item is Record<string, unknown> => !!item && typeof item === 'object')
+            .map((item) => {
               const title = SlideExporter.cleanMarkdownText(
-                item.title || item.slide_title || 'Untitled Slide',
+                (item.title || item.slide_title || 'Untitled Slide') as string,
               );
               return {
                 title,
-                layout: item.layout || 'title-bullets',
+                layout: (item.layout || 'title-bullets') as SlideLayout,
                 bullets: SlideExporter.sanitizeBullets(
-                  Array.isArray(item.bullets)
+                  (Array.isArray(item.bullets)
                     ? item.bullets
                     : Array.isArray(item.points)
                       ? item.points
-                      : [],
+                      : []) as string[],
                   title,
                 ),
-                subtitle: SlideExporter.cleanMarkdownText(item.subtitle || ''),
+                subtitle: SlideExporter.cleanMarkdownText((item.subtitle || '') as string),
               };
             });
         }
@@ -1119,9 +1155,9 @@ EXAMPLE OUTPUT for flowchart layout:
     switch (layout) {
       case 'chart':
         if (
-          !(content as any).chart ||
-          !(content as any).chart.data ||
-          (content as any).chart.data.length === 0
+          !(content).chart ||
+          !(content).chart.data ||
+          (content).chart.data.length === 0
         ) {
           needsFallback = true;
           log.warn(`Chart layout missing chart data for slide "${title}", injecting fallback`);
@@ -1129,9 +1165,9 @@ EXAMPLE OUTPUT for flowchart layout:
         break;
       case 'table':
         if (
-          !(content as any).table ||
-          !(content as any).table.rows ||
-          (content as any).table.rows.length === 0
+          !(content).table ||
+          !(content).table.rows ||
+          (content).table.rows.length === 0
         ) {
           needsFallback = true;
           log.warn(`Table layout missing table data for slide "${title}", injecting fallback`);
@@ -1298,7 +1334,7 @@ EXAMPLE OUTPUT for flowchart layout:
 
     switch (layout) {
       case 'chart':
-        (content as any).chart = {
+        content.chart = {
           type: this.pickChartType(title, seed),
           data: [
             { label: isVietnamese ? 'Q.1' : 'Q1', value: val[0], target: val[0] - 10 },
@@ -1324,7 +1360,7 @@ EXAMPLE OUTPUT for flowchart layout:
         break;
 
       case 'table':
-        (content as any).table = {
+        content.table = {
           headers: isVietnamese ? ['STT', 'Tiêu chí', 'Giá trị'] : ['No.', 'Criteria', 'Value'],
           rows: [
             ['1', isVietnamese ? 'Chỉ số A' : `Metric ${(seed % 20) + 1}`, `${val[0]}%`],
@@ -1375,7 +1411,7 @@ EXAMPLE OUTPUT for flowchart layout:
         break;
 
       case 'flowchart':
-        (content as any).flowchart = {
+        content.flowchart = {
           nodes: [
             { id: 'start', label: isVietnamese ? 'Bắt đầu' : 'Start', type: 'start' },
             { id: 'input', label: isVietnamese ? 'Nhập liệu' : 'Input Data', type: 'input' },
@@ -1396,7 +1432,7 @@ EXAMPLE OUTPUT for flowchart layout:
         break;
 
       case 'infographic':
-        (content as any).infographic = [
+        content.infographic = [
           {
             type: 'header',
             content: isVietnamese ? 'Thống kê chính' : 'Key Statistics',

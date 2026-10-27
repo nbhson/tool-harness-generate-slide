@@ -13,8 +13,8 @@ const log = logger.child('RequestCoalescer');
  * Useful when parallel slide generation produces similar prompts.
  */
 export class RequestCoalescer {
-  private pending = new Map<string, { promise: Promise<any>; timestamp: number }>();
-  private completedCache = new Map<string, { data: any; timestamp: number }>();
+  private pending = new Map<string, { promise: Promise<unknown>; timestamp: number }>();
+  private completedCache = new Map<string, { data: unknown; timestamp: number }>();
   private ttlMs: number;
   private cleanupInterval: ReturnType<typeof setInterval> | null = null;
 

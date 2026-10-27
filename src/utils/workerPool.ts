@@ -1,17 +1,24 @@
 import { logger } from './logger';
+import type { Presentation } from '../schemas/presentation.schema';
 
 const log = logger.child('WorkerPool');
 
 export type WorkerTaskType = 'export-pptx' | 'parse-json' | 'chunk-text';
 
+/** Payload for the 'export-pptx' worker task. */
+export interface PptxExportTaskData {
+  presentation: Presentation;
+  outputPath: string;
+}
+
 export interface WorkerTask {
   type: WorkerTaskType;
-  data: any;
+  data: unknown;
 }
 
 export interface WorkerTaskResponse {
   success: boolean;
-  data?: any;
+  data?: unknown;
   error?: string;
 }
 
@@ -54,7 +61,7 @@ export class WorkerPool {
    * Run a task through the worker pool.
    * Falls back to main thread if workers unavailable.
    */
-  async run<T = any>(task: WorkerTask): Promise<T> {
+  async run<T = unknown>(task: WorkerTask): Promise<T> {
     if (!this.isAvailable) {
       return this.runOnMainThread<T>(task);
     }
@@ -97,13 +104,13 @@ export class WorkerPool {
   private async runOnMainThread<T>(task: WorkerTask): Promise<T> {
     switch (task.type) {
       case 'export-pptx':
-        return this.runPPTXExport(task.data) as T;
+        return (await this.runPPTXExport(task.data)) as T;
       case 'parse-json':
-        return JSON.parse(task.data) as T;
+        return JSON.parse(task.data as string) as T;
       case 'chunk-text': {
         const { TextChunker } = require('./textChunker');
         const chunker = new TextChunker();
-        return chunker.chunk(task.data) as T;
+        return chunker.chunk(task.data as string) as T;
       }
       default:
         throw new Error(`Unknown task type: ${task.type}`);
@@ -113,10 +120,11 @@ export class WorkerPool {
   /**
    * Run PPTX export on main thread
    */
-  private async runPPTXExport(data: any): Promise<any> {
+  private async runPPTXExport(data: unknown): Promise<string> {
     const { SlideExporter } = require('../harness/tools/slideExporter');
     const exporter = new SlideExporter();
-    return exporter.exportPPTX(data.presentation, data.outputPath);
+    const { presentation, outputPath } = data as PptxExportTaskData;
+    return exporter.exportPPTX(presentation, outputPath);
   }
 
   /**

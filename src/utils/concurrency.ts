@@ -39,7 +39,7 @@ const defaultConfig: ConcurrencyPoolConfig = {
 export type ProgressCallback = (
   completed: number,
   total: number,
-  latestResult?: TaskResult<any>,
+  latestResult?: TaskResult<unknown>,
 ) => void;
 
 /**

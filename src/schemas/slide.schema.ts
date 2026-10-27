@@ -12,6 +12,8 @@ export interface SlideContent {
   layout: SlideLayout;
   visuals?: SlideVisuals;
   table?: SlideTable;
+  /** Top-level chart data (preferred over visuals.chart when both are present). */
+  chart?: SlideChart;
   timeline?: TimelineItem[];
   flowchart?: Flowchart;
   infographic?: InfographicElement[];

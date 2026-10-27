@@ -1,6 +1,11 @@
 import PptxGenJS from 'pptxgenjs';
 import type { Presentation } from '../../schemas/presentation.schema';
-import type { Slide } from '../../schemas/slide.schema';
+import type {
+  Slide,
+  SlideChart,
+  SlideContent,
+  SlideImage,
+} from '../../schemas/slide.schema';
 import { logger } from '../../utils/logger';
 import { mkdirSync } from 'fs';
 import { dirname, resolve } from 'path';
@@ -14,8 +19,21 @@ interface ThemeLayout {
   description?: string;
   colors: Record<string, string>;
   fonts: Record<string, string>;
-  layout: Record<string, any>;
+  layout: {
+    width?: number;
+    height?: number;
+    padding?: {
+      top?: number;
+      left?: number;
+      right?: number;
+      bottom?: number;
+    };
+    slideNumberPosition?: string;
+  };
 }
+
+/** A styled text run as accepted by pptxgenjs addText(). */
+type TextRun = { text: string; options: PptxGenJS.TextPropsOptions };
 
 export class SlideExporter {
   private workerPool?: WorkerPool;
@@ -259,9 +277,9 @@ export class SlideExporter {
    */
   public static parseMarkdownToRuns(
     text: string,
-    baseOpts: Record<string, any>,
+    baseOpts: PptxGenJS.TextPropsOptions,
     boldColor?: string,
-  ): Array<{ text: string; options: Record<string, any> }> {
+  ): TextRun[] {
     if (!text) return [{ text: '', options: baseOpts }];
 
     // Clean Markdown link syntax, broken orphan link brackets, leading bullets, and raw # headers
@@ -274,7 +292,7 @@ export class SlideExporter {
 
     if (!cleaned) return [{ text: '', options: baseOpts }];
 
-    const runs: Array<{ text: string; options: Record<string, any> }> = [];
+    const runs: TextRun[] = [];
     const regex = /(\*\*.*?\*\*|\*.*?\*)/g;
     const parts = cleaned.split(regex);
 
@@ -369,7 +387,7 @@ export class SlideExporter {
   }
 
   private renderSlide(
-    pptSlide: any,
+    pptSlide: PptxGenJS.Slide,
     slide: Slide,
     theme: ThemeLayout,
     slideNum: number,
@@ -449,11 +467,11 @@ export class SlideExporter {
 
   private buildBulletRuns(
     bullets: string[],
-    baseOpts: Record<string, any>,
+    baseOpts: PptxGenJS.TextPropsOptions,
     bulletPrefix: (index: number) => string,
     accentColor?: string,
-  ): Array<{ text: string; options: Record<string, any> }> {
-    const allRuns: Array<{ text: string; options: Record<string, any> }> = [];
+  ): TextRun[] {
+    const allRuns: TextRun[] = [];
 
     bullets.forEach((bulletText, i) => {
       const prefixStr = bulletPrefix(i);
@@ -707,7 +725,7 @@ export class SlideExporter {
    * Render clean, borderless, cardless text bullets with crisp typography hierarchy.
    */
   private renderCleanText(
-    pptSlide: any,
+    pptSlide: PptxGenJS.Slide,
     rawBullets: string[],
     theme: ThemeLayout,
     textColor: string,
@@ -744,7 +762,7 @@ export class SlideExporter {
       lineSpacingMultiple = 1.2;
     }
 
-    const allRuns: Array<{ text: string; options: Record<string, any> }> = [];
+    const allRuns: TextRun[] = [];
 
     bullets.forEach((bulletText) => {
       const { header, body } = SlideExporter.parseBulletItem(bulletText);
@@ -830,8 +848,8 @@ export class SlideExporter {
   }
 
   private renderTableSlide(
-    pptSlide: any,
-    content: any,
+    pptSlide: PptxGenJS.Slide,
+    content: SlideContent,
     theme: ThemeLayout,
     textColor: string,
     startY: number,
@@ -877,7 +895,7 @@ export class SlideExporter {
       for (let c = 1; c < colCount; c++) colW[c] = rem;
     }
 
-    const tableRows: any[][] = [];
+    const tableRows: PptxGenJS.TableRow[] = [];
 
     // Header row
     const headerRow = headers.map((hText: string) => ({
@@ -888,8 +906,8 @@ export class SlideExporter {
         bold: true,
         color: 'FFFFFF',
         fill: { color: primaryHex },
-        align: 'center',
-        valign: 'middle',
+        align: 'center' as const,
+        valign: 'middle' as const,
       },
     }));
     tableRows.push(headerRow);
@@ -904,8 +922,8 @@ export class SlideExporter {
           fontSize: 12,
           color: textHex,
           fill: { color: bgFill },
-          align: cIdx === 0 ? 'center' : 'left',
-          valign: 'middle',
+          align: (cIdx === 0 ? 'center' : 'left') as 'center' | 'left',
+          valign: 'middle' as const,
         },
       }));
       tableRows.push(dataRow);
@@ -923,8 +941,8 @@ export class SlideExporter {
 
   // ─── MODERN THEME ──────────────────────────────────────
   private renderModernSlide(
-    pptSlide: any,
-    content: any,
+    pptSlide: PptxGenJS.Slide,
+    content: SlideContent,
     theme: ThemeLayout,
     textColor: string,
     slideNum: number,
@@ -1000,7 +1018,7 @@ export class SlideExporter {
           fontFace: theme.fonts.title,
           color: '#FFFFFF',
           bold: true,
-          align: 'center',
+          align: 'center' as const,
         });
 
         if (content.subtitle) {
@@ -1012,7 +1030,7 @@ export class SlideExporter {
             fontSize: 18,
             fontFace: theme.fonts.body,
             color: this.hex(colors.accent),
-            align: 'center',
+            align: 'center' as const,
           });
         }
         break;
@@ -1055,8 +1073,8 @@ export class SlideExporter {
           fontFace: theme.fonts.accent,
           color: this.hex(textColor),
           italic: true,
-          align: 'center',
-          valign: 'middle',
+          align: 'center' as const,
+          valign: 'middle' as const,
         });
 
         if (content.subtitle || content.notes) {
@@ -1069,7 +1087,7 @@ export class SlideExporter {
             fontFace: theme.fonts.body,
             color: this.hex(colors.primary),
             bold: true,
-            align: 'center',
+            align: 'center' as const,
           });
         }
         break;
@@ -1183,8 +1201,8 @@ export class SlideExporter {
 
   // ─── MINIMAL THEME ─────────────────────────────────────
   private renderMinimalSlide(
-    pptSlide: any,
-    content: any,
+    pptSlide: PptxGenJS.Slide,
+    content: SlideContent,
     theme: ThemeLayout,
     textColor: string,
     slideNum: number,
@@ -1339,8 +1357,8 @@ export class SlideExporter {
 
   // ─── CORPORATE THEME ───────────────────────────────────
   private renderCorporateSlide(
-    pptSlide: any,
-    content: any,
+    pptSlide: PptxGenJS.Slide,
+    content: SlideContent,
     theme: ThemeLayout,
     textColor: string,
     slideNum: number,
@@ -1378,7 +1396,7 @@ export class SlideExporter {
           fontFace: theme.fonts.title,
           color: '#FFFFFF',
           bold: true,
-          align: 'center',
+          align: 'center' as const,
         });
 
         const lineY = titleY + titleInfo.height + 0.1;
@@ -1399,7 +1417,7 @@ export class SlideExporter {
             fontSize: 20,
             fontFace: theme.fonts.body,
             color: this.hex(colors.accent),
-            align: 'center',
+            align: 'center' as const,
           });
         }
         break;
@@ -1523,15 +1541,15 @@ export class SlideExporter {
       fontSize: 10,
       fontFace: theme.fonts.body,
       color: '#FFFFFF',
-      align: 'center',
-      valign: 'middle',
+      align: 'center' as const,
+      valign: 'middle' as const,
     });
   }
 
   // ─── CREATIVE / BOLD / TECH THEMES ────────────────────
   private renderCreativeSlide(
-    pptSlide: any,
-    content: any,
+    pptSlide: PptxGenJS.Slide,
+    content: SlideContent,
     theme: ThemeLayout,
     textColor: string,
     slideNum: number,
@@ -1697,12 +1715,12 @@ export class SlideExporter {
       fontSize: 12,
       fontFace: theme.fonts.body,
       color: this.hex(colors.textLight),
-      align: 'center',
+      align: 'center' as const,
     });
   }
 
   // ─── SHARED COMPONENT RENDERERS ────────────────────────
-  private renderTitleBar(pptSlide: any, content: any, theme: ThemeLayout, textColor: string) {
+  private renderTitleBar(pptSlide: PptxGenJS.Slide, content: SlideContent, theme: ThemeLayout, textColor: string) {
     const colors = theme.colors;
     const titleInfo = this.calculateTitleLayout(content.title, 32, 11.5);
 
@@ -1746,7 +1764,7 @@ export class SlideExporter {
     return { height: extraH + 0.1 };
   }
 
-  private renderMinimalTitle(pptSlide: any, content: any, theme: ThemeLayout) {
+  private renderMinimalTitle(pptSlide: PptxGenJS.Slide, content: SlideContent, theme: ThemeLayout) {
     const colors = theme.colors;
     const pad = theme.layout?.padding || { left: 0.8 };
     const titleInfo = this.calculateTitleLayout(content.title, 30, 11.0);
@@ -1791,7 +1809,7 @@ export class SlideExporter {
     return { height: extraH };
   }
 
-  private renderCorporateTitle(pptSlide: any, content: any, theme: ThemeLayout) {
+  private renderCorporateTitle(pptSlide: PptxGenJS.Slide, content: SlideContent, theme: ThemeLayout) {
     const colors = theme.colors;
     const titleInfo = this.calculateTitleLayout(content.title, 30, 11.0);
 
@@ -1804,7 +1822,7 @@ export class SlideExporter {
       fontFace: theme.fonts.title,
       color: this.hex(colors.primary),
       bold: true,
-      align: 'center',
+      align: 'center' as const,
     });
 
     let extraH = titleInfo.height;
@@ -1818,7 +1836,7 @@ export class SlideExporter {
         fontSize: 14,
         fontFace: theme.fonts.body,
         color: this.hex(colors.accent || colors.primary),
-        align: 'center',
+        align: 'center' as const,
       });
       extraH += 0.45;
     }
@@ -1835,7 +1853,7 @@ export class SlideExporter {
     return { height: extraH };
   }
 
-  private renderCreativeTitle(pptSlide: any, content: any, theme: ThemeLayout) {
+  private renderCreativeTitle(pptSlide: PptxGenJS.Slide, content: SlideContent, theme: ThemeLayout) {
     const colors = theme.colors;
     const titleInfo = this.calculateTitleLayout(content.title, 32, 11.0);
 
@@ -1880,8 +1898,8 @@ export class SlideExporter {
   }
 
   private renderSplitColumns(
-    pptSlide: any,
-    content: any,
+    pptSlide: PptxGenJS.Slide,
+    content: SlideContent,
     theme: ThemeLayout,
     textColor: string,
     startY: number,
@@ -1964,8 +1982,8 @@ export class SlideExporter {
   }
 
   private renderImageSplitLayout(
-    pptSlide: any,
-    content: any,
+    pptSlide: PptxGenJS.Slide,
+    content: SlideContent,
     theme: ThemeLayout,
     textColor: string,
     startY: number,
@@ -1995,8 +2013,8 @@ export class SlideExporter {
         fontSize: 18,
         fontFace: theme.fonts.title,
         color: this.hex(colors.primary),
-        align: 'center',
-        valign: 'middle',
+        align: 'center' as const,
+        valign: 'middle' as const,
       });
     }
   }
@@ -2018,8 +2036,8 @@ export class SlideExporter {
   ];
 
   private renderChartSlide(
-    pptSlide: any,
-    content: any,
+    pptSlide: PptxGenJS.Slide,
+    content: SlideContent,
     theme: ThemeLayout,
     textColor: string,
     startY: number,
@@ -2059,7 +2077,7 @@ export class SlideExporter {
     const chartColors =
       chart.colors && chart.colors.length > 0
         ? chart.colors.map((c: string) => this.hex(c))
-        : series.map((_: any, i: number) => this.hex(themePalette[i % themePalette.length]));
+        : series.map((_series, i: number) => this.hex(themePalette[i % themePalette.length]));
 
     // Fixed height for chart to avoid overlapping with text
     const chartH = 3.2;
@@ -2068,7 +2086,7 @@ export class SlideExporter {
       y: startY + 0.2,
       w: 11.3,
       h: chartH,
-      chartTitle: chart.title,
+      title: chart.title,
       showLegend: true,
       chartColors,
     });
@@ -2089,12 +2107,12 @@ export class SlideExporter {
    *   - Pre-formatted [{ labels: [], values: [] }] -> pass through
    */
   private toPptxChartSeries(
-    chart: any,
+    chart: SlideChart,
   ): Array<{ name: string; labels: string[]; values: number[] }> {
-    const data = Array.isArray(chart?.data) ? chart.data : [];
+    const data: Array<Record<string, unknown>> = Array.isArray(chart?.data) ? chart.data : [];
     if (data.length === 0) return [];
-    if (data.every((item: any) => Array.isArray(item.labels) && Array.isArray(item.values))) {
-      return data;
+    if (data.every((item) => Array.isArray(item.labels) && Array.isArray(item.values))) {
+      return data as Array<{ name: string; labels: string[]; values: number[] }>;
     }
 
     // Group keys by value type: strings = labels, numbers = value series
@@ -2118,12 +2136,12 @@ export class SlideExporter {
       if (valueKeys.length > 0) {
         return valueKeys.map((key) => ({
           name: key === 'value' ? chart.title || 'Value' : key,
-          labels: data.map((item: any, i: number) => {
+          labels: data.map((item, i: number) => {
             const raw = item[labelKey];
             if (raw != null) return String(raw);
             return chart.labels?.[i] != null ? String(chart.labels[i]) : `Item ${i + 1}`;
           }),
-          values: data.map((item: any) => {
+          values: data.map((item) => {
             const v = item[key];
             return typeof v === 'number' && !isNaN(v) ? v : 0;
           }),
@@ -2140,8 +2158,8 @@ export class SlideExporter {
       if (valueKeys2.length > 0) {
         return valueKeys2.map((key) => ({
           name: key === 'value' ? chart.title || 'Value' : key,
-          labels: data.map((item: any) => String(item[labelKey2] ?? '')),
-          values: data.map((item: any) => {
+          labels: data.map((item) => String(item[labelKey2] ?? '')),
+          values: data.map((item) => {
             const v = item[key];
             return typeof v === 'number' && !isNaN(v) ? v : 0;
           }),
@@ -2151,8 +2169,8 @@ export class SlideExporter {
       return [
         {
           name: chart.title || 'Data',
-          labels: data.map((_: any, i: number) => chart.labels?.[i] || `#${i + 1}`),
-          values: data.map((item: any) => {
+          labels: data.map((_item, i: number) => chart.labels?.[i] || `#${i + 1}`),
+          values: data.map((item) => {
             const v = item[numericKeys[0]];
             return typeof v === 'number' && !isNaN(v) ? v : 0;
           }),
@@ -2167,8 +2185,8 @@ export class SlideExporter {
       return [
         {
           name: chart.title || 'Data',
-          labels: data.map((item: any) => String(item[anyLabelKey] ?? '')),
-          values: data.map((item: any) => {
+          labels: data.map((item) => String(item[anyLabelKey] ?? '')),
+          values: data.map((item) => {
             const v = item[anyValueKey];
             return typeof v === 'number' && !isNaN(v) ? v : 0;
           }),
@@ -2192,8 +2210,8 @@ export class SlideExporter {
   }
 
   private renderStatsSlide(
-    pptSlide: any,
-    content: any,
+    pptSlide: PptxGenJS.Slide,
+    content: SlideContent,
     theme: ThemeLayout,
     textColor: string,
     startY: number,
@@ -2213,7 +2231,7 @@ export class SlideExporter {
     const cardHeight = 2.0;
     const margin = 0.3;
 
-    stats.forEach((stat: any, index: number) => {
+    stats.forEach((stat, index: number) => {
       const row = Math.floor(index / statsPerRow);
       const col = index % statsPerRow;
 
@@ -2244,7 +2262,7 @@ export class SlideExporter {
           fontSize: 22,
           fontFace: 'Segoe UI Emoji, Apple Color Emoji, Arial',
           color: cardTextColor,
-          align: 'center',
+          align: 'center' as const,
         });
       }
 
@@ -2258,7 +2276,7 @@ export class SlideExporter {
         fontFace: theme.fonts.title,
         color: cardTextColor,
         bold: true,
-        align: 'center',
+        align: 'center' as const,
       });
 
       // Stat label
@@ -2270,14 +2288,14 @@ export class SlideExporter {
         fontSize: 12,
         fontFace: theme.fonts.body,
         color: cardTextColor,
-        align: 'center',
+        align: 'center' as const,
       });
     });
   }
 
   private renderTimelineSlide(
-    pptSlide: any,
-    content: any,
+    pptSlide: PptxGenJS.Slide,
+    content: SlideContent,
     theme: ThemeLayout,
     textColor: string,
     startY: number,
@@ -2304,7 +2322,7 @@ export class SlideExporter {
       line: { color: this.hex(colors.primary), width: 2 },
     });
 
-    timeline.forEach((item: any, index: number) => {
+    timeline.forEach((item, index: number) => {
       const y = startY + index * itemHeight;
 
       // Timeline dot with icon
@@ -2316,7 +2334,7 @@ export class SlideExporter {
         h: 0.4,
         fontSize: 15,
         fontFace: 'Segoe UI Emoji, Apple Color Emoji, Arial',
-        align: 'center',
+        align: 'center' as const,
       });
 
       // Date
@@ -2358,8 +2376,8 @@ export class SlideExporter {
   }
 
   private renderFlowchartSlide(
-    pptSlide: any,
-    content: any,
+    pptSlide: PptxGenJS.Slide,
+    content: SlideContent,
     theme: ThemeLayout,
     textColor: string,
     startY: number,
@@ -2392,7 +2410,7 @@ export class SlideExporter {
       return colors.primary;
     }
 
-    flowchart.nodes.forEach((node: any, index: number) => {
+    flowchart.nodes.forEach((node, index: number) => {
       const nx = isHoriz ? startX + index * (nodeW + nodeSpacing) : startX + 0.2;
       const ny = isHoriz ? startNodeY : startNodeY + index * (nodeH + nodeSpacing);
       const shape = node.type === 'decision' ? 'diamond' : 'roundRect';
@@ -2417,15 +2435,15 @@ export class SlideExporter {
         fontFace: theme.fonts.body,
         color: '#FFFFFF',
         bold: true,
-        align: 'center',
-        valign: 'middle',
+        align: 'center' as const,
+        valign: 'middle' as const,
         margin: [2, 4, 2, 4],
       });
     });
 
     // Render edges as actual connecting arrows/lines
     if (flowchart.edges && flowchart.edges.length > 0) {
-      flowchart.edges.forEach((edge: any) => {
+      flowchart.edges.forEach((edge) => {
         const from = nodePositions.get(edge.from);
         const to = nodePositions.get(edge.to);
         if (!from || !to) return;
@@ -2449,7 +2467,7 @@ export class SlideExporter {
             h: 0.3,
             fontSize: 10,
             color: this.hex(colors.primary),
-            align: 'center',
+            align: 'center' as const,
           });
           // Edge label
           if (edge.label) {
@@ -2461,7 +2479,7 @@ export class SlideExporter {
               fontSize: 8,
               fontFace: theme.fonts.body,
               color: this.hex(colors.textLight),
-              align: 'center',
+              align: 'center' as const,
             });
           }
         } else {
@@ -2483,7 +2501,7 @@ export class SlideExporter {
             h: 0.3,
             fontSize: 10,
             color: this.hex(colors.primary),
-            align: 'center',
+            align: 'center' as const,
           });
           // Edge label
           if (edge.label) {
@@ -2496,7 +2514,7 @@ export class SlideExporter {
               fontFace: theme.fonts.body,
               color: this.hex(colors.textLight),
               align: 'left',
-              valign: 'middle',
+              valign: 'middle' as const,
             });
           }
         }
@@ -2505,8 +2523,8 @@ export class SlideExporter {
   }
 
   private renderInfographicSlide(
-    pptSlide: any,
-    content: any,
+    pptSlide: PptxGenJS.Slide,
+    content: SlideContent,
     theme: ThemeLayout,
     textColor: string,
     startY: number,
@@ -2522,18 +2540,18 @@ export class SlideExporter {
     }
 
     // Group elements by type for better layout organization
-    const headers = infographic.filter((e: any) => e.type === 'header');
-    const stats = infographic.filter((e: any) => e.type === 'stat');
-    const texts = infographic.filter((e: any) => e.type === 'text');
-    const images = infographic.filter((e: any) => e.type === 'image');
-    const charts = infographic.filter((e: any) => e.type === 'chart');
-    const icons = infographic.filter((e: any) => e.type === 'icon');
+    const headers = infographic.filter((e) => e.type === 'header');
+    const stats = infographic.filter((e) => e.type === 'stat');
+    const texts = infographic.filter((e) => e.type === 'text');
+    const images = infographic.filter((e) => e.type === 'image');
+    const charts = infographic.filter((e) => e.type === 'chart');
+    const icons = infographic.filter((e) => e.type === 'icon');
 
     // Calculate layout based on element types
     let currentY = startY;
 
     // Render headers first
-    headers.forEach((element: any) => {
+    headers.forEach((element) => {
       const style = element.style || {};
       pptSlide.addText(element.content, {
         x: 1.0,
@@ -2544,7 +2562,7 @@ export class SlideExporter {
         fontFace: style.fontWeight === 'bold' ? theme.fonts.title : theme.fonts.body,
         color: this.hex(style.color || colors.primary),
         bold: style.fontWeight === 'bold',
-        align: 'center',
+        align: 'center' as const,
       });
       currentY += 0.7;
     });
@@ -2557,7 +2575,7 @@ export class SlideExporter {
       const margin = 0.3;
       const startX = (13.33 - (statsPerRow * (cardWidth + margin) - margin)) / 2;
 
-      stats.forEach((stat: any, index: number) => {
+      stats.forEach((stat, index: number) => {
         const row = Math.floor(index / statsPerRow);
         const col = index % statsPerRow;
         const x = startX + col * (cardWidth + margin);
@@ -2583,12 +2601,13 @@ export class SlideExporter {
           fontFace: theme.fonts.title,
           color: '#FFFFFF',
           bold: true,
-          align: 'center',
+          align: 'center' as const,
         });
 
         // Icon if available
-        if (stat.icon) {
-          pptSlide.addText(`[${stat.icon}]`, {
+        const statIcon = (stat as { icon?: string }).icon;
+        if (statIcon) {
+          pptSlide.addText(`[${statIcon}]`, {
             x: x + cardWidth - 0.6,
             y: y + cardHeight - 0.4,
             w: 0.4,
@@ -2596,7 +2615,7 @@ export class SlideExporter {
             fontSize: 14,
             fontFace: theme.fonts.body,
             color: '#FFFFFF',
-            align: 'center',
+            align: 'center' as const,
           });
         }
       });
@@ -2605,7 +2624,7 @@ export class SlideExporter {
     }
 
     // Render text elements
-    texts.forEach((element: any) => {
+    texts.forEach((element) => {
       const style = element.style || {};
       pptSlide.addText(element.content, {
         x: 1.0,
@@ -2615,7 +2634,7 @@ export class SlideExporter {
         fontSize: style.fontSize || 14,
         fontFace: theme.fonts.body,
         color: this.hex(style.color || textColor),
-        align: 'center',
+        align: 'center' as const,
       });
       currentY += 0.6;
     });
@@ -2623,7 +2642,7 @@ export class SlideExporter {
     // Render icons as emoji symbols (not raw text)
     if (icons.length > 0) {
       const iconEmojis = icons
-        .map((el: any) => SlideExporter.iconToEmoji(el.content || el.label))
+        .map((el) => SlideExporter.iconToEmoji(el.content || (el as { label?: string }).label))
         .join('  ');
       pptSlide.addText(iconEmojis, {
         x: 1.0,
@@ -2633,15 +2652,15 @@ export class SlideExporter {
         fontSize: 24,
         fontFace: 'Segoe UI Emoji, Apple Color Emoji, Arial',
         color: this.hex(colors.primary),
-        align: 'center',
+        align: 'center' as const,
       });
       currentY += 0.7;
     }
 
     // Render remaining elements (images, charts) as structured placeholders
-    [...images, ...charts].forEach((element: any) => {
+    [...images, ...charts].forEach((element) => {
       pptSlide.addText(
-        `[${element.type}: ${element.content || element.label || 'Visual Element'}]`,
+        `[${element.type}: ${element.content || (element as { label?: string }).label || 'Visual Element'}]`,
         {
           x: 1.0,
           y: currentY,
@@ -2650,7 +2669,7 @@ export class SlideExporter {
           fontSize: 12,
           fontFace: theme.fonts.body,
           color: this.hex(textColor),
-          align: 'center',
+          align: 'center' as const,
         },
       );
       currentY += 0.6;
@@ -2658,8 +2677,8 @@ export class SlideExporter {
   }
 
   private renderImageGridSlide(
-    pptSlide: any,
-    content: any,
+    pptSlide: PptxGenJS.Slide,
+    content: SlideContent,
     theme: ThemeLayout,
     textColor: string,
     startY: number,
@@ -2683,7 +2702,7 @@ export class SlideExporter {
       fontFace: theme.fonts.title,
       color: this.hex(colors.primary),
       bold: true,
-      align: 'center',
+      align: 'center' as const,
     });
 
     // Render image placeholders
@@ -2693,7 +2712,7 @@ export class SlideExporter {
     const margin = 0.2;
 
     // Use addImageSafe to handle data/path/url correctly
-    images.forEach((img: any, index: number) => {
+    images.forEach((img, index: number) => {
       const row = Math.floor(index / cols);
       const col = index % cols;
 
@@ -2705,8 +2724,8 @@ export class SlideExporter {
   }
 
   private renderVideoSlide(
-    pptSlide: any,
-    content: any,
+    pptSlide: PptxGenJS.Slide,
+    content: SlideContent,
     theme: ThemeLayout,
     textColor: string,
     startY: number,
@@ -2730,7 +2749,7 @@ export class SlideExporter {
       fontFace: theme.fonts.title,
       color: this.hex(colors.primary),
       bold: true,
-      align: 'center',
+      align: 'center' as const,
     });
 
     // Video placeholder
@@ -2751,8 +2770,8 @@ export class SlideExporter {
       fontSize: 16,
       fontFace: theme.fonts.body,
       color: '#FFFFFF',
-      align: 'center',
-      valign: 'middle',
+      align: 'center' as const,
+      valign: 'middle' as const,
     });
 
     // URL
@@ -2764,7 +2783,7 @@ export class SlideExporter {
       fontSize: 10,
       fontFace: theme.fonts.body,
       color: this.hex(textColor),
-      align: 'center',
+      align: 'center' as const,
     });
 
     // Render bullets if available
@@ -2774,8 +2793,8 @@ export class SlideExporter {
   }
 
   private renderCodeSlide(
-    pptSlide: any,
-    content: any,
+    pptSlide: PptxGenJS.Slide,
+    content: SlideContent,
     theme: ThemeLayout,
     textColor: string,
     startY: number,
@@ -2861,8 +2880,8 @@ export class SlideExporter {
   }
 
   private renderFAQSlide(
-    pptSlide: any,
-    content: any,
+    pptSlide: PptxGenJS.Slide,
+    content: SlideContent,
     theme: ThemeLayout,
     textColor: string,
     startY: number,
@@ -2886,11 +2905,11 @@ export class SlideExporter {
       fontFace: theme.fonts.title,
       color: this.hex(colors.primary),
       bold: true,
-      align: 'center',
+      align: 'center' as const,
     });
 
     const itemHeight = 1.0;
-    faq.forEach((item: any, index: number) => {
+    faq.forEach((item, index: number) => {
       const y = startY + 0.7 + index * itemHeight;
 
       // Question
@@ -2919,8 +2938,8 @@ export class SlideExporter {
   }
 
   private renderTestimonialSlide(
-    pptSlide: any,
-    content: any,
+    pptSlide: PptxGenJS.Slide,
+    content: SlideContent,
     theme: ThemeLayout,
     textColor: string,
     startY: number,
@@ -2944,14 +2963,14 @@ export class SlideExporter {
       fontFace: theme.fonts.title,
       color: this.hex(colors.primary),
       bold: true,
-      align: 'center',
+      align: 'center' as const,
     });
 
     const cardWidth = 5.4;
     const cardHeight = 2.5;
     const margin = 0.3;
 
-    testimonials.forEach((test: any, index: number) => {
+    testimonials.forEach((test, index: number) => {
       const col = index % 2;
       const row = Math.floor(index / 2);
 
@@ -3009,8 +3028,8 @@ export class SlideExporter {
   }
 
   private renderPricingSlide(
-    pptSlide: any,
-    content: any,
+    pptSlide: PptxGenJS.Slide,
+    content: SlideContent,
     theme: ThemeLayout,
     textColor: string,
     startY: number,
@@ -3034,14 +3053,14 @@ export class SlideExporter {
       fontFace: theme.fonts.title,
       color: this.hex(colors.primary),
       bold: true,
-      align: 'center',
+      align: 'center' as const,
     });
 
     const cardWidth = 3.3;
     const cardHeight = 4.5;
     const margin = 0.3;
 
-    pricing.forEach((plan: any, index: number) => {
+    pricing.forEach((plan, index: number) => {
       const x = 0.8 + index * (cardWidth + margin);
 
       // Card background
@@ -3065,7 +3084,7 @@ export class SlideExporter {
         fontFace: theme.fonts.title,
         color: plan.highlighted ? '#FFFFFF' : this.hex(colors.primary),
         bold: true,
-        align: 'center',
+        align: 'center' as const,
       });
 
       // Price
@@ -3078,7 +3097,7 @@ export class SlideExporter {
         fontFace: theme.fonts.title,
         color: plan.highlighted ? '#FFFFFF' : this.hex(colors.accent),
         bold: true,
-        align: 'center',
+        align: 'center' as const,
       });
 
       // Period
@@ -3091,7 +3110,7 @@ export class SlideExporter {
           fontSize: 10,
           fontFace: theme.fonts.body,
           color: plan.highlighted ? '#FFFFFF' : this.hex(colors.textLight),
-          align: 'center',
+          align: 'center' as const,
         });
       }
 
@@ -3127,14 +3146,14 @@ export class SlideExporter {
         fontFace: theme.fonts.body,
         color: '#FFFFFF',
         bold: true,
-        align: 'center',
-        valign: 'middle',
+        align: 'center' as const,
+        valign: 'middle' as const,
       });
     });
   }
 
   private addSlideNumber(
-    pptSlide: any,
+    pptSlide: PptxGenJS.Slide,
     slideNum: number,
     totalSlides: number,
     theme: ThemeLayout,
@@ -3153,7 +3172,7 @@ export class SlideExporter {
       fontSize: 10,
       fontFace: theme.fonts.body,
       color: this.hex(colors.textLight || '#666666'),
-      align: 'center',
+      align: 'center' as const,
     });
   }
 
@@ -3161,8 +3180,15 @@ export class SlideExporter {
    * Safely add an image to a slide.
    * pptxgenjs addImage accepts EITHER `data` (base64/dataUri) OR `path` (file path/URL), not both.
    */
-  private addImageSafe(pptSlide: any, img: any, x: number, y: number, w: number, h: number): void {
-    const opts: any = { x, y, w, h };
+  private addImageSafe(
+    pptSlide: PptxGenJS.Slide,
+    img: SlideImage & { path?: string },
+    x: number,
+    y: number,
+    w: number,
+    h: number,
+  ): void {
+    const opts: PptxGenJS.ImageProps = { x, y, w, h };
     if (img.base64) {
       opts.data = img.base64;
     } else if (img.path) {
@@ -3170,7 +3196,6 @@ export class SlideExporter {
     } else if (img.url) {
       opts.path = img.url;
     } else {
-      // No image data available — skip silently; the caller already handles fallback text
       return;
     }
     pptSlide.addImage(opts);
