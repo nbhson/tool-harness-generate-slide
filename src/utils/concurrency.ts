@@ -36,14 +36,18 @@ const defaultConfig: ConcurrencyPoolConfig = {
   scaleDownThresholdMs: 5000,
 };
 
-export type ProgressCallback = (completed: number, total: number, latestResult?: TaskResult<any>) => void;
+export type ProgressCallback = (
+  completed: number,
+  total: number,
+  latestResult?: TaskResult<any>,
+) => void;
 
 /**
  * Concurrency Pool
- * 
+ *
  * Manages parallel execution of async tasks with configurable concurrency limits.
  * Supports adaptive concurrency that auto-tunes based on response latency.
- * 
+ *
  * Usage:
  *   const pool = new ConcurrencyPool({ concurrency: 5 });
  *   const results = await pool.runBatch(tasks, onProgress);
@@ -62,15 +66,10 @@ export class ConcurrencyPool {
    * Run a batch of tasks with concurrency limit.
    * Returns results in the same order as input tasks.
    */
-  async runBatch<T>(
-    tasks: Task<T>[],
-    onProgress?: ProgressCallback
-  ): Promise<TaskResult<T>[]> {
+  async runBatch<T>(tasks: Task<T>[], onProgress?: ProgressCallback): Promise<TaskResult<T>[]> {
     if (tasks.length === 0) return [];
 
-    const concurrency = this.config.adaptive
-      ? this.currentConcurrency
-      : this.config.concurrency;
+    const concurrency = this.config.adaptive ? this.currentConcurrency : this.config.concurrency;
 
     log.info('Starting batch execution', {
       taskCount: tasks.length,
@@ -108,7 +107,9 @@ export class ConcurrencyPool {
       });
 
       // Throttle: wait if we've hit the concurrency limit
-      if (executing.size >= (this.config.adaptive ? this.currentConcurrency : this.config.concurrency)) {
+      if (
+        executing.size >= (this.config.adaptive ? this.currentConcurrency : this.config.concurrency)
+      ) {
         await Promise.race(executing);
       }
     }
@@ -116,8 +117,8 @@ export class ConcurrencyPool {
     // Wait for all remaining tasks
     await Promise.all(executing);
 
-    const succeeded = results.filter(r => r.status === 'fulfilled').length;
-    const failed = results.filter(r => r.status === 'rejected').length;
+    const succeeded = results.filter((r) => r.status === 'fulfilled').length;
+    const failed = results.filter((r) => r.status === 'rejected').length;
 
     log.info('Batch execution completed', {
       total: tasks.length,
@@ -136,7 +137,7 @@ export class ConcurrencyPool {
   async runOrderedBatches<T>(
     tasks: Task<T>[],
     batchSize: number,
-    onBatchComplete?: (batchIndex: number, batchResults: TaskResult<T>[]) => void
+    onBatchComplete?: (_batchIndex: number, _batchResults: TaskResult<T>[]) => void,
   ): Promise<TaskResult<T>[]> {
     const allResults: TaskResult<T>[] = [];
     const batches = this.chunkArray(tasks, batchSize);
@@ -157,8 +158,8 @@ export class ConcurrencyPool {
       }
 
       log.info(`Batch ${i + 1}/${batches.length} completed`, {
-        succeeded: batchResults.filter(r => r.status === 'fulfilled').length,
-        failed: batchResults.filter(r => r.status === 'rejected').length,
+        succeeded: batchResults.filter((r) => r.status === 'fulfilled').length,
+        failed: batchResults.filter((r) => r.status === 'rejected').length,
       });
     }
 
@@ -199,14 +200,27 @@ export class ConcurrencyPool {
       this.recentLatencies.shift();
     }
 
-    const avgLatency = this.recentLatencies.reduce((a, b) => a + b, 0) / this.recentLatencies.length;
+    const avgLatency =
+      this.recentLatencies.reduce((a, b) => a + b, 0) / this.recentLatencies.length;
 
-    if (avgLatency < this.config.scaleUpThresholdMs && this.currentConcurrency < this.config.maxConcurrency) {
+    if (
+      avgLatency < this.config.scaleUpThresholdMs &&
+      this.currentConcurrency < this.config.maxConcurrency
+    ) {
       this.currentConcurrency++;
-      log.info('Adaptive: increased concurrency', { concurrency: this.currentConcurrency, avgLatency: Math.round(avgLatency) });
-    } else if (avgLatency > this.config.scaleDownThresholdMs && this.currentConcurrency > this.config.minConcurrency) {
+      log.info('Adaptive: increased concurrency', {
+        concurrency: this.currentConcurrency,
+        avgLatency: Math.round(avgLatency),
+      });
+    } else if (
+      avgLatency > this.config.scaleDownThresholdMs &&
+      this.currentConcurrency > this.config.minConcurrency
+    ) {
       this.currentConcurrency--;
-      log.info('Adaptive: decreased concurrency', { concurrency: this.currentConcurrency, avgLatency: Math.round(avgLatency) });
+      log.info('Adaptive: decreased concurrency', {
+        concurrency: this.currentConcurrency,
+        avgLatency: Math.round(avgLatency),
+      });
     }
   }
 
@@ -234,7 +248,7 @@ export class ConcurrencyPool {
  */
 export async function runWithConcurrency<T>(
   tasks: Task<T>[],
-  concurrency: number = 5
+  concurrency: number = 5,
 ): Promise<TaskResult<T>[]> {
   const pool = new ConcurrencyPool({ concurrency });
   return pool.runBatch(tasks);

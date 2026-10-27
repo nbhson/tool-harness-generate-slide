@@ -1,8 +1,5 @@
-import { Slide } from '../../schemas/slide.schema';
-import { Presentation } from '../../schemas/presentation.schema';
-import { logger } from '../../utils/logger';
-
-const log = logger.child('Validators');
+import type { Slide } from '../../schemas/slide.schema';
+import type { Presentation } from '../../schemas/presentation.schema';
 
 export interface ValidationResult {
   valid: boolean;
@@ -74,9 +71,16 @@ export class Validators {
     }
 
     const validLayouts = [
-      'title', 'title-bullets', 'two-column', 'image-left',
-      'image-right', 'full-image', 'section-break', 'comparison',
-      'chart', 'quote',
+      'title',
+      'title-bullets',
+      'two-column',
+      'image-left',
+      'image-right',
+      'full-image',
+      'section-break',
+      'comparison',
+      'chart',
+      'quote',
     ];
 
     if (slide.content.layout && !validLayouts.includes(slide.content.layout)) {
@@ -113,7 +117,9 @@ export class Validators {
     if (presentation.slides) {
       for (let i = 0; i < presentation.slides.length; i++) {
         if (presentation.slides[i].index !== i) {
-          errors.push(`Slide at position ${i} has incorrect index: ${presentation.slides[i].index}`);
+          errors.push(
+            `Slide at position ${i} has incorrect index: ${presentation.slides[i].index}`,
+          );
         }
       }
     }

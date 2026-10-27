@@ -1,4 +1,4 @@
-import { Slide, SlideTheme } from './slide.schema';
+import type { Slide, SlideTheme } from './slide.schema';
 
 export interface Presentation {
   id: string;

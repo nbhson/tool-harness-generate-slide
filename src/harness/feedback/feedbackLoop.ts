@@ -1,6 +1,6 @@
-import { Presentation } from '../../schemas/presentation.schema';
-import { Slide } from '../../schemas/slide.schema';
-import { LongTermMemory } from '../memory/longTerm';
+import type { Presentation } from '../../schemas/presentation.schema';
+import type { Slide } from '../../schemas/slide.schema';
+import type { LongTermMemory } from '../memory/longTerm';
 import { logger } from '../../utils/logger';
 
 export interface FeedbackMetrics {
@@ -37,8 +37,14 @@ export class FeedbackLoop {
     };
   }
 
-  async onValidationFailure(context: ValidationFailureContext): Promise<{ shouldRetry: boolean; feedback: string }> {
-    log.warn('Validation failure', { error: context.error, stage: context.stage, attempt: context.attempt });
+  async onValidationFailure(
+    context: ValidationFailureContext,
+  ): Promise<{ shouldRetry: boolean; feedback: string }> {
+    log.warn('Validation failure', {
+      error: context.error,
+      stage: context.stage,
+      attempt: context.attempt,
+    });
     this.retryCount++;
 
     const maxRetries = 3;
@@ -52,7 +58,8 @@ export class FeedbackLoop {
     } else if (context.error.includes('length')) {
       feedback = 'Reduce the total text content. Keep it concise and impactful.';
     } else if (context.error.includes('layout')) {
-      feedback = 'Use a valid layout type: title, title-bullets, two-column, image-left, full-image, chart, quote.';
+      feedback =
+        'Use a valid layout type: title, title-bullets, two-column, image-left, full-image, chart, quote.';
     } else {
       feedback = 'Review the slide content and ensure it meets all quality criteria.';
     }

@@ -1,4 +1,4 @@
-import { Slide } from '../../schemas/slide.schema';
+import type { Slide } from '../../schemas/slide.schema';
 
 export interface WorkingMemoryData {
   currentSlideIndex: number;

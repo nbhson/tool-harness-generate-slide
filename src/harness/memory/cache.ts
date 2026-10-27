@@ -26,10 +26,10 @@ interface CacheEntry<T> {
 
 /**
  * Response Cache for LLM responses.
- * 
+ *
  * Caches by content hash to avoid redundant LLM calls for identical prompts.
  * Uses TTL-based expiry and LRU-like eviction.
- * 
+ *
  * Usage:
  *   const cache = new ResponseCache();
  *   const result = await cache.getOrCompute(promptHash, () => callLLM(prompt));
@@ -50,11 +50,7 @@ export class ResponseCache {
   /**
    * Get cached result or compute and cache.
    */
-  async getOrCompute<T>(
-    key: string,
-    compute: () => Promise<T>,
-    ttlMs?: number
-  ): Promise<T> {
+  async getOrCompute<T>(key: string, compute: () => Promise<T>, ttlMs?: number): Promise<T> {
     if (!this.config.enabled) {
       return compute();
     }
@@ -75,7 +71,7 @@ export class ResponseCache {
   /**
    * Store a value in cache.
    */
-  set<T>(key: string, data: T, ttlMs?: number): void {
+  set<T>(key: string, data: T, _ttlMs?: number): void {
     if (!this.config.enabled) return;
 
     // Evict if at capacity

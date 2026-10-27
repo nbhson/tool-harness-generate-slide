@@ -1,9 +1,9 @@
 import PptxGenJS from 'pptxgenjs';
-import { Presentation } from '../../schemas/presentation.schema';
-import { Slide } from '../../schemas/slide.schema';
+import type { Presentation } from '../../schemas/presentation.schema';
+import type { Slide } from '../../schemas/slide.schema';
 import { logger } from '../../utils/logger';
 import { mkdirSync } from 'fs';
-import { resolve, dirname } from 'path';
+import { dirname, resolve } from 'path';
 
 import { WorkerPool } from '../../utils/workerPool';
 
@@ -32,84 +32,209 @@ export class SlideExporter {
    */
   public static ICON_MAP: Record<string, string> = {
     // Business & metrics
-    'trending-up': '📈', 'trending-down': '📉', 'growth': '📈',
-    'chart': '📊', 'bar-chart': '📊', 'pie-chart': '🥧', 'line-chart': '📈',
-    'analytics': '📊', 'stats': '📊', 'statistics': '📊',
-    'report': '📋', 'dashboard': '📊', 'metric': '📏',
-    'target': '🎯', 'goal': '🎯', 'bullseye': '🎯',
-    'award': '🏆', 'trophy': '🏆', 'medal': '🏅', 'badge': '🔰',
+    'trending-up': '📈',
+    'trending-down': '📉',
+    growth: '📈',
+    chart: '📊',
+    'bar-chart': '📊',
+    'pie-chart': '🥧',
+    'line-chart': '📈',
+    analytics: '📊',
+    stats: '📊',
+    statistics: '📊',
+    report: '📋',
+    dashboard: '📊',
+    metric: '📏',
+    target: '🎯',
+    goal: '🎯',
+    bullseye: '🎯',
+    award: '🏆',
+    trophy: '🏆',
+    medal: '🏅',
+    badge: '🔰',
     // Actions
-    'check': '✅', 'check-circle': '✅', 'done': '✅',
-    'cross': '❌', 'close': '❌', 'x-circle': '❌',
-    'plus': '➕', 'minus': '➖',
-    'download': '⬇️', 'upload': '⬆️', 'export': '📤', 'import': '📥',
-    'share': '🔗', 'link': '🔗', 'send': '📨',
-    'search': '🔍', 'zoom': '🔍', 'find': '🔎',
-    'settings': '⚙️', 'gear': '⚙️', 'configure': '⚙️',
-    'edit': '✏️', 'pencil': '✏️', 'write': '✏️',
-    'delete': '🗑️', 'trash': '🗑️', 'remove': '🗑️',
-    'lock': '🔒', 'unlock': '🔓', 'security': '🔒',
-    'refresh': '🔄', 'sync': '🔄', 'reload': '🔄',
-    'play': '▶️', 'pause': '⏸️', 'stop': '⏹️',
+    check: '✅',
+    'check-circle': '✅',
+    done: '✅',
+    cross: '❌',
+    close: '❌',
+    'x-circle': '❌',
+    plus: '➕',
+    minus: '➖',
+    download: '⬇️',
+    upload: '⬆️',
+    export: '📤',
+    import: '📥',
+    share: '🔗',
+    link: '🔗',
+    send: '📨',
+    search: '🔍',
+    zoom: '🔍',
+    find: '🔎',
+    settings: '⚙️',
+    gear: '⚙️',
+    configure: '⚙️',
+    edit: '✏️',
+    pencil: '✏️',
+    write: '✏️',
+    delete: '🗑️',
+    trash: '🗑️',
+    remove: '🗑️',
+    lock: '🔒',
+    unlock: '🔓',
+    security: '🔒',
+    refresh: '🔄',
+    sync: '🔄',
+    reload: '🔄',
+    play: '▶️',
+    pause: '⏸️',
+    stop: '⏹️',
     // Users & people
-    'users': '👥', 'people': '👥', 'team': '👥', 'group': '👥',
-    'user': '👤', 'person': '👤', 'profile': '👤',
-    'customer': '🤝', 'client': '🤝', 'partner': '🤝',
-    'testimonial': '💬', 'feedback': '💬', 'comment': '💬',
-    'support': '🎧', 'headset': '🎧', 'help': '❓',
+    users: '👥',
+    people: '👥',
+    team: '👥',
+    group: '👥',
+    user: '👤',
+    person: '👤',
+    profile: '👤',
+    customer: '🤝',
+    client: '🤝',
+    partner: '🤝',
+    testimonial: '💬',
+    feedback: '💬',
+    comment: '💬',
+    support: '🎧',
+    headset: '🎧',
+    help: '❓',
     // Tech
-    'code': '💻', 'coding': '💻', 'programming': '💻',
-    'server': '🖥️', 'database': '🗄️', 'storage': '💾',
-    'cloud': '☁️', 'api': '🔌', 'integration': '🔌',
-    'mobile': '📱', 'app': '📱', 'phone': '📞',
-    'email': '📧', 'mail': '📧', 'message': '💬',
-    'notification': '🔔', 'bell': '🔔', 'alert': '🔔',
-    'globe': '🌐', 'web': '🌐', 'internet': '🌐',
-    'github': '🐙', 'git': '🔀', 'branch': '🔀',
+    code: '💻',
+    coding: '💻',
+    programming: '💻',
+    server: '🖥️',
+    database: '🗄️',
+    storage: '💾',
+    cloud: '☁️',
+    api: '🔌',
+    integration: '🔌',
+    mobile: '📱',
+    app: '📱',
+    phone: '📞',
+    email: '📧',
+    mail: '📧',
+    message: '💬',
+    notification: '🔔',
+    bell: '🔔',
+    alert: '🔔',
+    globe: '🌐',
+    web: '🌐',
+    internet: '🌐',
+    github: '🐙',
+    git: '🔀',
+    branch: '🔀',
     // Time & schedule
-    'calendar': '📅', 'date': '📅', 'schedule': '📅',
-    'clock': '⏰', 'time': '⏰', 'timer': '⏱️',
-    'hourglass': '⌛', 'deadline': '⏰',
-    'rocket': '🚀', 'launch': '🚀', 'deploy': '🚀',
-    'flag': '🚩', 'milestone': '🏁', 'finish': '🏁',
+    calendar: '📅',
+    date: '📅',
+    schedule: '📅',
+    clock: '⏰',
+    time: '⏰',
+    timer: '⏱️',
+    hourglass: '⌛',
+    deadline: '⏰',
+    rocket: '🚀',
+    launch: '🚀',
+    deploy: '🚀',
+    flag: '🚩',
+    milestone: '🏁',
+    finish: '🏁',
     // Communication
-    'lightbulb': '💡', 'idea': '💡', 'innovation': '💡',
-    'solution': '🔧', 'tool': '🔧', 'fix': '🔧',
-    'star': '⭐', 'favorite': '⭐', 'rating': '⭐',
-    'heart': '❤️', 'like': '👍', 'thumbs-up': '👍',
-    'fire': '🔥', 'hot': '🔥', 'trending': '🔥',
-    'info': 'ℹ️', 'information': 'ℹ️',
-    'warning': '⚠️', 'caution': '⚠️',
-    'question': '❓', 'faq': '❓',
+    lightbulb: '💡',
+    idea: '💡',
+    innovation: '💡',
+    solution: '🔧',
+    tool: '🔧',
+    fix: '🔧',
+    star: '⭐',
+    favorite: '⭐',
+    rating: '⭐',
+    heart: '❤️',
+    like: '👍',
+    'thumbs-up': '👍',
+    fire: '🔥',
+    hot: '🔥',
+    trending: '🔥',
+    info: 'ℹ️',
+    information: 'ℹ️',
+    warning: '⚠️',
+    caution: '⚠️',
+    question: '❓',
+    faq: '❓',
     // Documents
-    'document': '📄', 'doc': '📄', 'file': '📄',
-    'folder': '📁', 'directory': '📁',
-    'presentation': '📽️', 'slide': '📑',
-    'note': '📝', 'notes': '📝',
-    'clipboard': '📋', 'list': '📋',
-    'bookmark': '🔖', 'tag': '🏷️',
+    document: '📄',
+    doc: '📄',
+    file: '📄',
+    folder: '📁',
+    directory: '📁',
+    presentation: '📽️',
+    slide: '📑',
+    note: '📝',
+    notes: '📝',
+    clipboard: '📋',
+    list: '📋',
+    bookmark: '🔖',
+    tag: '🏷️',
     // Finance
-    'money': '💰', 'finance': '💰', 'payment': '💳',
-    'currency': '💲', 'dollar': '💵',
-    'bank': '🏦', 'wallet': '👛',
-    'shopping': '🛒', 'cart': '🛒',
+    money: '💰',
+    finance: '💰',
+    payment: '💳',
+    currency: '💲',
+    dollar: '💵',
+    bank: '🏦',
+    wallet: '👛',
+    shopping: '🛒',
+    cart: '🛒',
     // Location
-    'location': '📍', 'pin': '📍', 'map': '🗺️',
-    'home': '🏠', 'office': '🏢', 'building': '🏢',
+    location: '📍',
+    pin: '📍',
+    map: '🗺️',
+    home: '🏠',
+    office: '🏢',
+    building: '🏢',
     // Misc
-    'palette': '🎨', 'design': '🎨', 'color': '🎨',
-    'education': '🎓', 'graduation': '🎓', 'learn': '📚',
-    'book': '📖', 'library': '📚',
-    'camera': '📷', 'photo': '📷', 'image': '🖼️',
-    'video': '🎬', 'film': '🎬', 'movie': '🎬',
-    'music': '🎵', 'sound': '🔊', 'volume': '🔊',
-    'game': '🎮', 'gaming': '🎮',
-    'leaf': '🍃', 'nature': '🌿', 'environment': '🌍',
-    'recycle': '♻️', 'sustainable': '♻️',
-    'truck': '🚚', 'delivery': '🚚', 'shipping': '🚚',
-    'airplane': '✈️', 'travel': '✈️', 'transport': '🚂',
-    'science': '🔬', 'lab': '🧪', 'research': '🔬',
-    'bulb': '💡', 'key': '🔑',
+    palette: '🎨',
+    design: '🎨',
+    color: '🎨',
+    education: '🎓',
+    graduation: '🎓',
+    learn: '📚',
+    book: '📖',
+    library: '📚',
+    camera: '📷',
+    photo: '📷',
+    image: '🖼️',
+    video: '🎬',
+    film: '🎬',
+    movie: '🎬',
+    music: '🎵',
+    sound: '🔊',
+    volume: '🔊',
+    game: '🎮',
+    gaming: '🎮',
+    leaf: '🍃',
+    nature: '🌿',
+    environment: '🌍',
+    recycle: '♻️',
+    sustainable: '♻️',
+    truck: '🚚',
+    delivery: '🚚',
+    shipping: '🚚',
+    airplane: '✈️',
+    travel: '✈️',
+    transport: '🚂',
+    science: '🔬',
+    lab: '🧪',
+    research: '🔬',
+    bulb: '💡',
+    key: '🔑',
   };
 
   /** Fallback icon when no emoji match exists */
@@ -121,9 +246,11 @@ export class SlideExporter {
    */
   public static iconToEmoji(iconName?: string): string {
     if (!iconName || typeof iconName !== 'string') return SlideExporter.ICON_FALLBACK;
-    const key = iconName.trim().toLowerCase()
-      .replace(/[\s_-]+/g, '-')       // normalize separators
-      .replace(/^(icon|i)-/, '');       // strip leading "icon-" or "i-"
+    const key = iconName
+      .trim()
+      .toLowerCase()
+      .replace(/[\s_-]+/g, '-') // normalize separators
+      .replace(/^(icon|i)-/, ''); // strip leading "icon-" or "i-"
     return SlideExporter.ICON_MAP[key] || SlideExporter.ICON_FALLBACK;
   }
 
@@ -133,12 +260,12 @@ export class SlideExporter {
   public static parseMarkdownToRuns(
     text: string,
     baseOpts: Record<string, any>,
-    boldColor?: string
+    boldColor?: string,
   ): Array<{ text: string; options: Record<string, any> }> {
     if (!text) return [{ text: '', options: baseOpts }];
 
     // Clean Markdown link syntax, broken orphan link brackets, leading bullets, and raw # headers
-    let cleaned = text
+    const cleaned = text
       .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
       .replace(/\]\([^)]+\)/g, '')
       .replace(/\[/g, '')
@@ -203,7 +330,10 @@ export class SlideExporter {
   }
 
   async exportPPTXDirect(presentation: Presentation, outputPath: string): Promise<string> {
-    log.info('Exporting presentation to PPTX', { outputPath, slideCount: presentation.slides.length });
+    log.info('Exporting presentation to PPTX', {
+      outputPath,
+      slideCount: presentation.slides.length,
+    });
 
     const pptx = new PptxGenJS();
 
@@ -238,13 +368,21 @@ export class SlideExporter {
     return absolutePath;
   }
 
-  private renderSlide(pptSlide: any, slide: Slide, theme: ThemeLayout, slideNum: number, totalSlides: number): void {
+  private renderSlide(
+    pptSlide: any,
+    slide: Slide,
+    theme: ThemeLayout,
+    slideNum: number,
+    totalSlides: number,
+  ): void {
     const content = slide.content;
     const colors = theme.colors;
 
     // Clean title, subtitle, and bullets of raw markdown headers, links, and bullet symbols
     content.title = SlideExporter.cleanMarkdownText(content.title);
-    content.subtitle = content.subtitle ? SlideExporter.cleanMarkdownText(content.subtitle) : undefined;
+    content.subtitle = content.subtitle
+      ? SlideExporter.cleanMarkdownText(content.subtitle)
+      : undefined;
     if (content.bullets && Array.isArray(content.bullets)) {
       content.bullets = SlideExporter.sanitizeBullets(content.bullets, content.title);
     }
@@ -282,7 +420,11 @@ export class SlideExporter {
   }
 
   // ─── DYNAMIC LAYOUT CALCULATION HELPERS ────────────────
-  private calculateTitleLayout(title: string, fontSize: number = 30, availableWidthInches: number = 11.5) {
+  private calculateTitleLayout(
+    title: string,
+    fontSize: number = 30,
+    availableWidthInches: number = 11.5,
+  ) {
     const charsPerLine = Math.floor(availableWidthInches * (120 / fontSize));
     const lineCount = Math.max(1, Math.ceil((title || '').length / Math.max(1, charsPerLine)));
     const lineHeightInches = (fontSize / 72) * 1.3;
@@ -309,7 +451,7 @@ export class SlideExporter {
     bullets: string[],
     baseOpts: Record<string, any>,
     bulletPrefix: (index: number) => string,
-    accentColor?: string
+    accentColor?: string,
   ): Array<{ text: string; options: Record<string, any> }> {
     const allRuns: Array<{ text: string; options: Record<string, any> }> = [];
 
@@ -327,7 +469,7 @@ export class SlideExporter {
       }
 
       const parsedRuns = SlideExporter.parseMarkdownToRuns(bulletText, baseOpts, accentColor);
-      
+
       if (parsedRuns.length > 0) {
         parsedRuns[parsedRuns.length - 1].options = {
           ...parsedRuns[parsedRuns.length - 1].options,
@@ -347,26 +489,31 @@ export class SlideExporter {
    */
   public static cleanMarkdownText(text: string): string {
     if (!text) return '';
-    return text
-      .replace(/```[a-z]*/gi, '')
-      .replace(/```/g, '')
-      // Convert Markdown links [Text](URL) or [Text](#anchor) -> Text
-      .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
-      // Remove broken orphan markdown link syntax like ](#anchor) or [
-      .replace(/\]\([^)]+\)/g, '')
-      .replace(/\[/g, '')
-      // Remove leading headers (#+), list bullets (- * + •), numbers (1.), markdown checkboxes repeatedly
-      .replace(/^(\s*([-+•]|#+|\[\s*\]|\d+\.|\*(?!\*))\s+)+/g, '')
-      // Remove ASCII box drawing characters
-      .replace(/[┌─┐│└┘┼├┤┬┴═║]/g, '')
-      // Remove table pipes
-      .replace(/^\s*\|\s*/, '')
-      .replace(/\s*\|\s*$/, '')
-      .replace(/\|\s*/g, ' ')
-      // Remove generic point prefixes
-      .replace(/^\s*\*{0,2}\s*(Điểm quan trọng|Mục|Ý|Point|Item)\s*\d+\s*[:\-–—]?\s*\*{0,2}\s*/gi, '')
-      .replace(/\s+/g, ' ')
-      .trim();
+    return (
+      text
+        .replace(/```[a-z]*/gi, '')
+        .replace(/```/g, '')
+        // Convert Markdown links [Text](URL) or [Text](#anchor) -> Text
+        .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+        // Remove broken orphan markdown link syntax like ](#anchor) or [
+        .replace(/\]\([^)]+\)/g, '')
+        .replace(/\[/g, '')
+        // Remove leading headers (#+), list bullets (- * + •), numbers (1.), markdown checkboxes repeatedly
+        .replace(/^(\s*([-+•]|#+|\[\s*\]|\d+\.|\*(?!\*))\s+)+/g, '')
+        // Remove ASCII box drawing characters
+        .replace(/[┌─┐│└┘┼├┤┬┴═║]/g, '')
+        // Remove table pipes
+        .replace(/^\s*\|\s*/, '')
+        .replace(/\s*\|\s*$/, '')
+        .replace(/\|\s*/g, ' ')
+        // Remove generic point prefixes
+        .replace(
+          /^\s*\*{0,2}\s*(Điểm quan trọng|Mục|Ý|Point|Item)\s*\d+\s*[:\-–—]?\s*\*{0,2}\s*/gi,
+          '',
+        )
+        .replace(/\s+/g, ' ')
+        .trim()
+    );
   }
 
   /**
@@ -376,9 +523,10 @@ export class SlideExporter {
   public static enrichBullets(bullets: string[], title: string = ''): string[] {
     if (!bullets || bullets.length === 0) return [];
 
-    const isVietnamese = /[àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ]/i.test(
-      title + ' ' + bullets.join(' ')
-    );
+    const isVietnamese =
+      /[àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ]/i.test(
+        title + ' ' + bullets.join(' '),
+      );
 
     // Special handling for Comparison / Overview slides if bullet count is sparse (< 3)
     const isComparison = /so sánh|comparison|đối chiếu|versus|vs/i.test(title);
@@ -388,62 +536,64 @@ export class SlideExporter {
           '**Tiêu chí So sánh**: Đánh giá sự khác biệt về kiến trúc, tính năng và khả năng đáp ứng nhu cầu thực tế.',
           '**Phương án Hiện tại**: Đảm bảo tính ổn định cao nhưng hạn chế về khả năng mở rộng và chi phí vận hành.',
           '**Phương án Đề xuất**: Tối ưu hóa hiệu năng, tự động hóa quy trình và giảm thiểu tối đa rủi ro vận hành.',
-          '**Kết luận & Đề xuất**: Lựa chọn giải pháp phù hợp với định hướng phát triển và ngân sách của dự án.'
+          '**Kết luận & Đề xuất**: Lựa chọn giải pháp phù hợp với định hướng phát triển và ngân sách của dự án.',
         ];
       } else {
         return [
           '**Comparison Criteria**: Comprehensive evaluation of architectural differences, performance, and features.',
           '**Current Solution**: High baseline stability but limited scalability and higher operational overhead.',
           '**Proposed Solution**: Optimized performance, automated workflow integration, and reduced risk.',
-          '**Recommendation**: Selecting the optimal roadmap aligned with strategic goals and technical requirements.'
+          '**Recommendation**: Selecting the optimal roadmap aligned with strategic goals and technical requirements.',
         ];
       }
     }
 
-    return bullets.map((b, idx) => {
-      const clean = SlideExporter.cleanMarkdownText(b);
-      if (!clean) return '';
+    return bullets
+      .map((b, idx) => {
+        const clean = SlideExporter.cleanMarkdownText(b);
+        if (!clean) return '';
 
-      const { header, body } = SlideExporter.parseBulletItem(clean);
+        const { header, body } = SlideExporter.parseBulletItem(clean);
 
-      // If bullet already has a header and body >= 35 chars, keep it as is
-      if (header && body && body.length >= 35) {
-        return `**${header}**: ${body}`;
-      }
-
-      // If clean bullet text is already >= 55 chars, keep it as is
-      if (!header && clean.length >= 55) {
-        return clean;
-      }
-
-      // Extract or create a clean header
-      const targetHeader = header || (clean.length <= 30 ? clean : clean.substring(0, 30));
-
-      let expandedBody = body;
-      if (!expandedBody || expandedBody.length < 25) {
-        if (isVietnamese) {
-          const defaultBodies = [
-            'Phân tích chi tiết và đánh giá toàn diện các thông số kỹ thuật cũng như các yếu tố vận hành trọng yếu.',
-            'Xây dựng giải pháp kỹ thuật tối ưu nhằm nâng cao hiệu năng, độ tin cậy và khả năng mở rộng.',
-            'Thiết lập quy trình chuẩn hóa giúp tối ưu hóa tài nguyên và giảm thiểu rủi ro vận hành.',
-            'Đánh giá kết quả thực tế, rút ra bài học kinh nghiệm và xác định các bước triển khai tiếp theo.',
-            'Tích hợp hệ thống đồng bộ nhằm đảm bảo an toàn dữ liệu và tối đa hóa trải nghiệm người dùng.'
-          ];
-          expandedBody = defaultBodies[idx % defaultBodies.length];
-        } else {
-          const defaultBodies = [
-            'Comprehensive analysis and evaluation of architectural metrics and operational requirements.',
-            'Implementing optimized technical solutions to enhance overall performance, stability, and scalability.',
-            'Establishing standardized workflows to minimize operational overhead and maximize resource utilization.',
-            'Assessing real-world benchmarks, validating findings, and driving key strategic outcomes.',
-            'Ensuring seamless integration across modules to maintain robust security and reliability.'
-          ];
-          expandedBody = defaultBodies[idx % defaultBodies.length];
+        // If bullet already has a header and body >= 35 chars, keep it as is
+        if (header && body && body.length >= 35) {
+          return `**${header}**: ${body}`;
         }
-      }
 
-      return `**${targetHeader}**: ${expandedBody}`;
-    }).filter(b => b.length > 0);
+        // If clean bullet text is already >= 55 chars, keep it as is
+        if (!header && clean.length >= 55) {
+          return clean;
+        }
+
+        // Extract or create a clean header
+        const targetHeader = header || (clean.length <= 30 ? clean : clean.substring(0, 30));
+
+        let expandedBody = body;
+        if (!expandedBody || expandedBody.length < 25) {
+          if (isVietnamese) {
+            const defaultBodies = [
+              'Phân tích chi tiết và đánh giá toàn diện các thông số kỹ thuật cũng như các yếu tố vận hành trọng yếu.',
+              'Xây dựng giải pháp kỹ thuật tối ưu nhằm nâng cao hiệu năng, độ tin cậy và khả năng mở rộng.',
+              'Thiết lập quy trình chuẩn hóa giúp tối ưu hóa tài nguyên và giảm thiểu rủi ro vận hành.',
+              'Đánh giá kết quả thực tế, rút ra bài học kinh nghiệm và xác định các bước triển khai tiếp theo.',
+              'Tích hợp hệ thống đồng bộ nhằm đảm bảo an toàn dữ liệu và tối đa hóa trải nghiệm người dùng.',
+            ];
+            expandedBody = defaultBodies[idx % defaultBodies.length];
+          } else {
+            const defaultBodies = [
+              'Comprehensive analysis and evaluation of architectural metrics and operational requirements.',
+              'Implementing optimized technical solutions to enhance overall performance, stability, and scalability.',
+              'Establishing standardized workflows to minimize operational overhead and maximize resource utilization.',
+              'Assessing real-world benchmarks, validating findings, and driving key strategic outcomes.',
+              'Ensuring seamless integration across modules to maintain robust security and reliability.',
+            ];
+            expandedBody = defaultBodies[idx % defaultBodies.length];
+          }
+        }
+
+        return `**${targetHeader}**: ${expandedBody}`;
+      })
+      .filter((b) => b.length > 0);
   }
 
   /**
@@ -452,8 +602,8 @@ export class SlideExporter {
   public static sanitizeBullets(bullets: string[], title: string = ''): string[] {
     if (!bullets || bullets.length === 0) return [];
     const cleaned = bullets
-      .map(b => SlideExporter.cleanMarkdownText(b))
-      .filter(b => b.length > 0);
+      .map((b) => SlideExporter.cleanMarkdownText(b))
+      .filter((b) => b.length > 0);
     return SlideExporter.enrichBullets(cleaned, title);
   }
 
@@ -464,7 +614,7 @@ export class SlideExporter {
   public static parseBulletItem(bulletText: string): { header: string; body: string } {
     if (!bulletText) return { header: '', body: '' };
 
-    let clean = bulletText
+    const clean = bulletText
       .replace(/```[a-z]*/gi, '')
       .replace(/```/g, '')
       .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
@@ -472,14 +622,23 @@ export class SlideExporter {
       .replace(/\[/g, '')
       .replace(/^(\s*([-+•]|#+|\[\s*\]|\d+\.|\*(?!\*))\s+)+/g, '')
       .replace(/[┌─┐│└┘┼├┤┬┴═║]/g, '')
-      .replace(/^\s*\*{0,2}\s*(Điểm quan trọng|Mục|Ý|Point|Item)\s*\d+\s*[:\-–—]?\s*\*{0,2}\s*/gi, '')
+      .replace(
+        /^\s*\*{0,2}\s*(Điểm quan trọng|Mục|Ý|Point|Item)\s*\d+\s*[:\-–—]?\s*\*{0,2}\s*/gi,
+        '',
+      )
       .trim();
 
     // Pattern 1: Explicit Bold Header with colon/separator: **Header**: Body or **Header** - Body
     const boldColonMatch = clean.match(/^(\*\*.*?\*\*|\*.*?\*)\s*[:\-–—]\s*(.*)$/);
     if (boldColonMatch) {
-      const header = boldColonMatch[1].replace(/[\*\_]/g, '').replace(/[:\-–—]+$/, '').trim();
-      let body = boldColonMatch[2].replace(/^[\*\_]+/, '').replace(/[\*\_]+$/, '').trim();
+      const header = boldColonMatch[1]
+        .replace(/[*_]/g, '')
+        .replace(/[:\-–—]+$/, '')
+        .trim();
+      let body = boldColonMatch[2]
+        .replace(/^[*_]+/, '')
+        .replace(/[*_]+$/, '')
+        .trim();
 
       if (/^(Điểm quan trọng|Mục|Ý|Point|Item)\s*\d+$/i.test(header)) {
         return { header: '', body: SlideExporter.cleanMarkdownText(body || clean) };
@@ -488,14 +647,23 @@ export class SlideExporter {
       if (body.toLowerCase() === header.toLowerCase()) {
         body = '';
       }
-      return { header: SlideExporter.cleanMarkdownText(header), body: SlideExporter.cleanMarkdownText(body) };
+      return {
+        header: SlideExporter.cleanMarkdownText(header),
+        body: SlideExporter.cleanMarkdownText(body),
+      };
     }
 
     // Pattern 2: Explicit Bold Header with space: **Header** Body
     const boldMatch = clean.match(/^(\*\*.*?\*\*|\*.*?\*)\s+(.*)$/);
     if (boldMatch) {
-      const header = boldMatch[1].replace(/[\*\_]/g, '').replace(/[:\-–—]+$/, '').trim();
-      let body = boldMatch[2].replace(/^[:\-–—\s]+/, '').replace(/[\*\_]/g, '').trim();
+      const header = boldMatch[1]
+        .replace(/[*_]/g, '')
+        .replace(/[:\-–—]+$/, '')
+        .trim();
+      let body = boldMatch[2]
+        .replace(/^[:\-–—\s]+/, '')
+        .replace(/[*_]/g, '')
+        .trim();
 
       if (/^(Điểm quan trọng|Mục|Ý|Point|Item)\s*\d+$/i.test(header)) {
         return { header: '', body: SlideExporter.cleanMarkdownText(body || clean) };
@@ -504,7 +672,10 @@ export class SlideExporter {
       if (body.toLowerCase() === header.toLowerCase()) {
         body = '';
       }
-      return { header: SlideExporter.cleanMarkdownText(header), body: SlideExporter.cleanMarkdownText(body) };
+      return {
+        header: SlideExporter.cleanMarkdownText(header),
+        body: SlideExporter.cleanMarkdownText(body),
+      };
     }
 
     // Pattern 3: Unbolded Header: Body (Only if header is 1-4 words, <=30 chars, no date numbers, and body is substantial >15 chars)
@@ -514,18 +685,22 @@ export class SlideExporter {
       const body = plainColonMatch[2].trim();
 
       const words = rawHeader.split(/\s+/);
-      const isDateOrNumber = /^\d+([\-\/\.]\d+)*$/i.test(rawHeader) || /^\d{4}\s*[\-–—]\s*\d{4}$/i.test(rawHeader);
+      const isDateOrNumber =
+        /^\d+([-/.]\d+)*$/i.test(rawHeader) || /^\d{4}\s*[–—-]\s*\d{4}$/i.test(rawHeader);
 
       if (words.length <= 4 && rawHeader.length <= 30 && !isDateOrNumber && body.length >= 15) {
         if (/^(Điểm quan trọng|Mục|Ý|Point|Item)\s*\d+$/i.test(rawHeader)) {
           return { header: '', body: SlideExporter.cleanMarkdownText(body || clean) };
         }
-        return { header: SlideExporter.cleanMarkdownText(rawHeader), body: SlideExporter.cleanMarkdownText(body) };
+        return {
+          header: SlideExporter.cleanMarkdownText(rawHeader),
+          body: SlideExporter.cleanMarkdownText(body),
+        };
       }
     }
 
     // Fallback: Entire text is body
-    return { header: '', body: SlideExporter.cleanMarkdownText(clean.replace(/[\*\_]/g, '')) };
+    return { header: '', body: SlideExporter.cleanMarkdownText(clean.replace(/[*_]/g, '')) };
   }
 
   /**
@@ -537,7 +712,7 @@ export class SlideExporter {
     theme: ThemeLayout,
     textColor: string,
     startY: number,
-    availableH: number = 4.8
+    availableH: number = 4.8,
   ): void {
     const bullets = SlideExporter.sanitizeBullets(rawBullets);
     if (!bullets || bullets.length === 0) return;
@@ -622,11 +797,15 @@ export class SlideExporter {
           },
         });
 
-        const parsedRuns = SlideExporter.parseMarkdownToRuns(bulletText, {
-          fontSize,
-          fontFace: theme.fonts.body,
-          color: textHex,
-        }, primaryHex);
+        const parsedRuns = SlideExporter.parseMarkdownToRuns(
+          bulletText,
+          {
+            fontSize,
+            fontFace: theme.fonts.body,
+            color: textHex,
+          },
+          primaryHex,
+        );
 
         if (parsedRuns.length > 0) {
           parsedRuns[parsedRuns.length - 1].options = {
@@ -655,7 +834,7 @@ export class SlideExporter {
     content: any,
     theme: ThemeLayout,
     textColor: string,
-    startY: number
+    startY: number,
   ): void {
     const colors = theme.colors;
     const primaryHex = this.hex(colors.primary);
@@ -664,7 +843,11 @@ export class SlideExporter {
     let headers: string[] = [];
     let rows: string[][] = [];
 
-    if (content.table && Array.isArray(content.table.headers) && Array.isArray(content.table.rows)) {
+    if (
+      content.table &&
+      Array.isArray(content.table.headers) &&
+      Array.isArray(content.table.rows)
+    ) {
       headers = content.table.headers;
       rows = content.table.rows;
     } else if (content.bullets && content.bullets.length > 0) {
@@ -739,7 +922,14 @@ export class SlideExporter {
   }
 
   // ─── MODERN THEME ──────────────────────────────────────
-  private renderModernSlide(pptSlide: any, content: any, theme: ThemeLayout, textColor: string, slideNum: number, totalSlides: number): void {
+  private renderModernSlide(
+    pptSlide: any,
+    content: any,
+    theme: ThemeLayout,
+    textColor: string,
+    slideNum: number,
+    totalSlides: number,
+  ): void {
     const colors = theme.colors;
 
     switch (content.layout) {
@@ -793,22 +983,36 @@ export class SlideExporter {
 
       case 'section-break': {
         pptSlide.addShape('rect', {
-          x: 0, y: 2.5, w: 13.33, h: 2.5,
+          x: 0,
+          y: 2.5,
+          w: 13.33,
+          h: 2.5,
           fill: { color: this.hex(colors.primary) },
         });
 
         const titleInfo = this.calculateTitleLayout(content.title, 36, 11.0);
         pptSlide.addText(content.title, {
-          x: 0.8, y: 2.7, w: '88%', h: titleInfo.height,
-          fontSize: 36, fontFace: theme.fonts.title,
-          color: '#FFFFFF', bold: true, align: 'center',
+          x: 0.8,
+          y: 2.7,
+          w: '88%',
+          h: titleInfo.height,
+          fontSize: 36,
+          fontFace: theme.fonts.title,
+          color: '#FFFFFF',
+          bold: true,
+          align: 'center',
         });
 
         if (content.subtitle) {
           pptSlide.addText(content.subtitle, {
-            x: 0.8, y: 2.7 + titleInfo.height + 0.1, w: '88%', h: 0.6,
-            fontSize: 18, fontFace: theme.fonts.body,
-            color: this.hex(colors.accent), align: 'center',
+            x: 0.8,
+            y: 2.7 + titleInfo.height + 0.1,
+            w: '88%',
+            h: 0.6,
+            fontSize: 18,
+            fontFace: theme.fonts.body,
+            color: this.hex(colors.accent),
+            align: 'center',
           });
         }
         break;
@@ -818,29 +1022,54 @@ export class SlideExporter {
       case 'comparison': {
         const titleInfo = this.renderTitleBar(pptSlide, content, theme, textColor);
         const startY = 0.4 + titleInfo.height + 0.3;
-        this.renderSplitColumns(pptSlide, content, theme, textColor, startY, content.layout === 'comparison');
+        this.renderSplitColumns(
+          pptSlide,
+          content,
+          theme,
+          textColor,
+          startY,
+          content.layout === 'comparison',
+        );
         break;
       }
 
       case 'quote': {
-        const quoteText = content.title || content.subtitle || (content.bullets && content.bullets[0]) || '';
+        const quoteText =
+          content.title || content.subtitle || (content.bullets && content.bullets[0]) || '';
         pptSlide.addText('\u201C', {
-          x: 1.0, y: 2.0, w: 1.0, h: 1.0,
-          fontSize: 80, fontFace: theme.fonts.accent,
+          x: 1.0,
+          y: 2.0,
+          w: 1.0,
+          h: 1.0,
+          fontSize: 80,
+          fontFace: theme.fonts.accent,
           color: this.hex(colors.accent || colors.primary),
         });
 
         pptSlide.addText(quoteText, {
-          x: 1.5, y: 2.6, w: 10.3, h: 2.2,
-          fontSize: 24, fontFace: theme.fonts.accent,
-          color: this.hex(textColor), italic: true, align: 'center', valign: 'middle',
+          x: 1.5,
+          y: 2.6,
+          w: 10.3,
+          h: 2.2,
+          fontSize: 24,
+          fontFace: theme.fonts.accent,
+          color: this.hex(textColor),
+          italic: true,
+          align: 'center',
+          valign: 'middle',
         });
 
         if (content.subtitle || content.notes) {
           pptSlide.addText(`— ${content.subtitle || content.notes}`, {
-            x: 1.5, y: 5.0, w: 10.3, h: 0.6,
-            fontSize: 16, fontFace: theme.fonts.body,
-            color: this.hex(colors.primary), bold: true, align: 'center',
+            x: 1.5,
+            y: 5.0,
+            w: 10.3,
+            h: 0.6,
+            fontSize: 16,
+            fontFace: theme.fonts.body,
+            color: this.hex(colors.primary),
+            bold: true,
+            align: 'center',
           });
         }
         break;
@@ -850,7 +1079,14 @@ export class SlideExporter {
       case 'image-right': {
         const titleInfo = this.renderTitleBar(pptSlide, content, theme, textColor);
         const startY = 0.4 + titleInfo.height + 0.3;
-        this.renderImageSplitLayout(pptSlide, content, theme, textColor, startY, content.layout === 'image-left');
+        this.renderImageSplitLayout(
+          pptSlide,
+          content,
+          theme,
+          textColor,
+          startY,
+          content.layout === 'image-left',
+        );
         break;
       }
 
@@ -946,7 +1182,14 @@ export class SlideExporter {
   }
 
   // ─── MINIMAL THEME ─────────────────────────────────────
-  private renderMinimalSlide(pptSlide: any, content: any, theme: ThemeLayout, textColor: string, slideNum: number, totalSlides: number): void {
+  private renderMinimalSlide(
+    pptSlide: any,
+    content: any,
+    theme: ThemeLayout,
+    textColor: string,
+    slideNum: number,
+    totalSlides: number,
+  ): void {
     const colors = theme.colors;
     const pad = theme.layout?.padding || { left: 0.8, top: 0.6 };
 
@@ -955,16 +1198,27 @@ export class SlideExporter {
         const titleInfo = this.calculateTitleLayout(content.title, 44, 10.5);
         const titleY = 2.2;
         pptSlide.addText(content.title, {
-          x: pad.left, y: titleY, w: '85%', h: titleInfo.height,
-          fontSize: 44, fontFace: theme.fonts.title,
-          color: this.hex(colors.primary), bold: true, align: 'left',
+          x: pad.left,
+          y: titleY,
+          w: '85%',
+          h: titleInfo.height,
+          fontSize: 44,
+          fontFace: theme.fonts.title,
+          color: this.hex(colors.primary),
+          bold: true,
+          align: 'left',
         });
         if (content.subtitle) {
           const subY = titleY + titleInfo.height + 0.1;
           pptSlide.addText(content.subtitle, {
-            x: pad.left, y: subY, w: '85%', h: 0.6,
-            fontSize: 18, fontFace: theme.fonts.body,
-            color: this.hex(colors.textLight), align: 'left',
+            x: pad.left,
+            y: subY,
+            w: '85%',
+            h: 0.6,
+            fontSize: 18,
+            fontFace: theme.fonts.body,
+            color: this.hex(colors.textLight),
+            align: 'left',
           });
         }
         break;
@@ -974,7 +1228,14 @@ export class SlideExporter {
       case 'comparison': {
         const titleInfo = this.renderMinimalTitle(pptSlide, content, theme);
         const startY = 0.8 + titleInfo.height + 0.4;
-        this.renderSplitColumns(pptSlide, content, theme, textColor, startY, content.layout === 'comparison');
+        this.renderSplitColumns(
+          pptSlide,
+          content,
+          theme,
+          textColor,
+          startY,
+          content.layout === 'comparison',
+        );
         break;
       }
 
@@ -1077,15 +1338,28 @@ export class SlideExporter {
   }
 
   // ─── CORPORATE THEME ───────────────────────────────────
-  private renderCorporateSlide(pptSlide: any, content: any, theme: ThemeLayout, textColor: string, slideNum: number, totalSlides: number): void {
+  private renderCorporateSlide(
+    pptSlide: any,
+    content: any,
+    theme: ThemeLayout,
+    textColor: string,
+    slideNum: number,
+    totalSlides: number,
+  ): void {
     const colors = theme.colors;
 
     pptSlide.addShape('rect', {
-      x: 0, y: 0, w: 13.33, h: 0.7,
+      x: 0,
+      y: 0,
+      w: 13.33,
+      h: 0.7,
       fill: { color: this.hex(colors.primary) },
     });
     pptSlide.addShape('rect', {
-      x: 0, y: 6.9, w: 13.33, h: 0.6,
+      x: 0,
+      y: 6.9,
+      w: 13.33,
+      h: 0.6,
       fill: { color: this.hex(colors.secondary || colors.primary) },
     });
 
@@ -1096,22 +1370,36 @@ export class SlideExporter {
         const titleInfo = this.calculateTitleLayout(content.title, 44, 11.0);
         const titleY = 2.0;
         pptSlide.addText(content.title, {
-          x: 1.0, y: titleY, w: '85%', h: titleInfo.height,
-          fontSize: 44, fontFace: theme.fonts.title,
-          color: '#FFFFFF', bold: true, align: 'center',
+          x: 1.0,
+          y: titleY,
+          w: '85%',
+          h: titleInfo.height,
+          fontSize: 44,
+          fontFace: theme.fonts.title,
+          color: '#FFFFFF',
+          bold: true,
+          align: 'center',
         });
 
         const lineY = titleY + titleInfo.height + 0.1;
         pptSlide.addShape('line', {
-          x: 4.16, y: lineY, w: 5.0, h: 0,
+          x: 4.16,
+          y: lineY,
+          w: 5.0,
+          h: 0,
           line: { color: this.hex(colors.accent), width: 2 },
         });
 
         if (content.subtitle) {
           pptSlide.addText(content.subtitle, {
-            x: 1.0, y: lineY + 0.2, w: '85%', h: 0.6,
-            fontSize: 20, fontFace: theme.fonts.body,
-            color: this.hex(colors.accent), align: 'center',
+            x: 1.0,
+            y: lineY + 0.2,
+            w: '85%',
+            h: 0.6,
+            fontSize: 20,
+            fontFace: theme.fonts.body,
+            color: this.hex(colors.accent),
+            align: 'center',
           });
         }
         break;
@@ -1121,7 +1409,14 @@ export class SlideExporter {
       case 'comparison': {
         const titleInfo = this.renderCorporateTitle(pptSlide, content, theme);
         const startY = 0.9 + titleInfo.height + 0.3;
-        this.renderSplitColumns(pptSlide, content, theme, textColor, startY, content.layout === 'comparison');
+        this.renderSplitColumns(
+          pptSlide,
+          content,
+          theme,
+          textColor,
+          startY,
+          content.layout === 'comparison',
+        );
         break;
       }
 
@@ -1221,37 +1516,64 @@ export class SlideExporter {
     }
 
     pptSlide.addText(`${slideNum} / ${totalSlides}`, {
-      x: 11.5, y: 6.9, w: 1.5, h: 0.6,
-      fontSize: 10, fontFace: theme.fonts.body,
-      color: '#FFFFFF', align: 'center', valign: 'middle',
+      x: 11.5,
+      y: 6.9,
+      w: 1.5,
+      h: 0.6,
+      fontSize: 10,
+      fontFace: theme.fonts.body,
+      color: '#FFFFFF',
+      align: 'center',
+      valign: 'middle',
     });
   }
 
   // ─── CREATIVE / BOLD / TECH THEMES ────────────────────
-  private renderCreativeSlide(pptSlide: any, content: any, theme: ThemeLayout, textColor: string, slideNum: number, totalSlides: number): void {
+  private renderCreativeSlide(
+    pptSlide: any,
+    content: any,
+    theme: ThemeLayout,
+    textColor: string,
+    slideNum: number,
+    _totalSlides: number,
+  ): void {
     const colors = theme.colors;
 
     switch (content.layout) {
       case 'title': {
         pptSlide.addShape('ellipse', {
-          x: 8.5, y: -1.5, w: 6.0, h: 4.5,
+          x: 8.5,
+          y: -1.5,
+          w: 6.0,
+          h: 4.5,
           fill: { color: this.hex(colors.primary), transparency: 70 },
         });
 
         const titleInfo = this.calculateTitleLayout(content.title, 46, 10.5);
         const titleY = 2.0;
         pptSlide.addText(content.title, {
-          x: 0.8, y: titleY, w: '85%', h: titleInfo.height,
-          fontSize: 46, fontFace: theme.fonts.title,
-          color: this.hex(colors.accent || colors.primary), bold: true, align: 'left',
+          x: 0.8,
+          y: titleY,
+          w: '85%',
+          h: titleInfo.height,
+          fontSize: 46,
+          fontFace: theme.fonts.title,
+          color: this.hex(colors.accent || colors.primary),
+          bold: true,
+          align: 'left',
         });
 
         if (content.subtitle) {
           const subY = titleY + titleInfo.height + 0.1;
           pptSlide.addText(content.subtitle, {
-            x: 0.8, y: subY, w: '85%', h: 0.6,
-            fontSize: 22, fontFace: theme.fonts.body,
-            color: this.hex(colors.textLight), align: 'left',
+            x: 0.8,
+            y: subY,
+            w: '85%',
+            h: 0.6,
+            fontSize: 22,
+            fontFace: theme.fonts.body,
+            color: this.hex(colors.textLight),
+            align: 'left',
           });
         }
         break;
@@ -1261,7 +1583,14 @@ export class SlideExporter {
       case 'comparison': {
         const titleInfo = this.renderCreativeTitle(pptSlide, content, theme);
         const startY = 0.5 + titleInfo.height + 0.3;
-        this.renderSplitColumns(pptSlide, content, theme, textColor, startY, content.layout === 'comparison');
+        this.renderSplitColumns(
+          pptSlide,
+          content,
+          theme,
+          textColor,
+          startY,
+          content.layout === 'comparison',
+        );
         break;
       }
 
@@ -1361,9 +1690,14 @@ export class SlideExporter {
     }
 
     pptSlide.addText(`${slideNum}`, {
-      x: 12.0, y: 6.8, w: 0.8, h: 0.5,
-      fontSize: 12, fontFace: theme.fonts.body,
-      color: this.hex(colors.textLight), align: 'center',
+      x: 12.0,
+      y: 6.8,
+      w: 0.8,
+      h: 0.5,
+      fontSize: 12,
+      fontFace: theme.fonts.body,
+      color: this.hex(colors.textLight),
+      align: 'center',
     });
   }
 
@@ -1418,25 +1752,39 @@ export class SlideExporter {
     const titleInfo = this.calculateTitleLayout(content.title, 30, 11.0);
 
     pptSlide.addText(content.title, {
-      x: pad.left, y: 0.8, w: '85%', h: titleInfo.height,
-      fontSize: 30, fontFace: theme.fonts.title,
-      color: this.hex(colors.primary), bold: true, align: 'left',
+      x: pad.left,
+      y: 0.8,
+      w: '85%',
+      h: titleInfo.height,
+      fontSize: 30,
+      fontFace: theme.fonts.title,
+      color: this.hex(colors.primary),
+      bold: true,
+      align: 'left',
     });
 
     let extraH = titleInfo.height;
     if (content.subtitle) {
       const subY = 0.8 + titleInfo.height + 0.05;
       pptSlide.addText(content.subtitle, {
-        x: pad.left, y: subY, w: '85%', h: 0.4,
-        fontSize: 14, fontFace: theme.fonts.body,
-        color: this.hex(colors.textLight || '#666666'), align: 'left',
+        x: pad.left,
+        y: subY,
+        w: '85%',
+        h: 0.4,
+        fontSize: 14,
+        fontFace: theme.fonts.body,
+        color: this.hex(colors.textLight || '#666666'),
+        align: 'left',
       });
       extraH += 0.45;
     }
 
     const lineY = 0.8 + extraH + 0.15;
     pptSlide.addShape('line', {
-      x: pad.left, y: lineY, w: 1.5, h: 0,
+      x: pad.left,
+      y: lineY,
+      w: 1.5,
+      h: 0,
       line: { color: this.hex(colors.textLight), width: 1 },
     });
 
@@ -1448,25 +1796,39 @@ export class SlideExporter {
     const titleInfo = this.calculateTitleLayout(content.title, 30, 11.0);
 
     pptSlide.addText(content.title, {
-      x: 0.6, y: 0.9, w: '88%', h: titleInfo.height,
-      fontSize: 30, fontFace: theme.fonts.title,
-      color: this.hex(colors.primary), bold: true, align: 'center',
+      x: 0.6,
+      y: 0.9,
+      w: '88%',
+      h: titleInfo.height,
+      fontSize: 30,
+      fontFace: theme.fonts.title,
+      color: this.hex(colors.primary),
+      bold: true,
+      align: 'center',
     });
 
     let extraH = titleInfo.height;
     if (content.subtitle) {
       const subY = 0.9 + titleInfo.height + 0.05;
       pptSlide.addText(content.subtitle, {
-        x: 0.6, y: subY, w: '88%', h: 0.4,
-        fontSize: 14, fontFace: theme.fonts.body,
-        color: this.hex(colors.accent || colors.primary), align: 'center',
+        x: 0.6,
+        y: subY,
+        w: '88%',
+        h: 0.4,
+        fontSize: 14,
+        fontFace: theme.fonts.body,
+        color: this.hex(colors.accent || colors.primary),
+        align: 'center',
       });
       extraH += 0.45;
     }
 
     const lineY = 0.9 + extraH + 0.15;
     pptSlide.addShape('line', {
-      x: 5.4, y: lineY, w: 2.5, h: 0,
+      x: 5.4,
+      y: lineY,
+      w: 2.5,
+      h: 0,
       line: { color: this.hex(colors.accent), width: 2 },
     });
 
@@ -1478,25 +1840,39 @@ export class SlideExporter {
     const titleInfo = this.calculateTitleLayout(content.title, 32, 11.0);
 
     pptSlide.addText(content.title, {
-      x: 0.8, y: 0.5, w: '85%', h: titleInfo.height,
-      fontSize: 32, fontFace: theme.fonts.title,
-      color: this.hex(colors.accent || colors.primary), bold: true, align: 'left',
+      x: 0.8,
+      y: 0.5,
+      w: '85%',
+      h: titleInfo.height,
+      fontSize: 32,
+      fontFace: theme.fonts.title,
+      color: this.hex(colors.accent || colors.primary),
+      bold: true,
+      align: 'left',
     });
 
     let extraH = titleInfo.height;
     if (content.subtitle) {
       const subY = 0.5 + titleInfo.height + 0.05;
       pptSlide.addText(content.subtitle, {
-        x: 0.8, y: subY, w: '85%', h: 0.4,
-        fontSize: 15, fontFace: theme.fonts.body,
-        color: this.hex(colors.textLight || '#666666'), align: 'left',
+        x: 0.8,
+        y: subY,
+        w: '85%',
+        h: 0.4,
+        fontSize: 15,
+        fontFace: theme.fonts.body,
+        color: this.hex(colors.textLight || '#666666'),
+        align: 'left',
       });
       extraH += 0.45;
     }
 
     const lineY = 0.5 + extraH + 0.15;
     pptSlide.addShape('line', {
-      x: 0.8, y: lineY, w: 2.0, h: 0,
+      x: 0.8,
+      y: lineY,
+      w: 2.0,
+      h: 0,
       line: { color: this.hex(colors.secondary || colors.primary), width: 3 },
     });
 
@@ -1509,7 +1885,7 @@ export class SlideExporter {
     theme: ThemeLayout,
     textColor: string,
     startY: number,
-    isComparison: boolean = false
+    isComparison: boolean = false,
   ) {
     const colors = theme.colors;
     const bullets: string[] = content.bullets || [];
@@ -1521,34 +1897,69 @@ export class SlideExporter {
     const leftX = 0.6;
     const rightX = 6.8;
 
-    const isVietnamese = /[àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ]/i.test(content.title || bullets.join(''));
+    const isVietnamese =
+      /[àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ]/i.test(
+        content.title || bullets.join(''),
+      );
     const headerLeft = isComparison
-      ? (isVietnamese ? 'Phương án A / Ưu điểm' : 'Option A / Pros')
-      : (isVietnamese ? 'Nội dung 1' : 'Section 1');
+      ? isVietnamese
+        ? 'Phương án A / Ưu điểm'
+        : 'Option A / Pros'
+      : isVietnamese
+        ? 'Nội dung 1'
+        : 'Section 1';
     const headerRight = isComparison
-      ? (isVietnamese ? 'Phương án B / Nhược điểm' : 'Option B / Cons')
-      : (isVietnamese ? 'Nội dung 2' : 'Section 2');
+      ? isVietnamese
+        ? 'Phương án B / Nhược điểm'
+        : 'Option B / Cons'
+      : isVietnamese
+        ? 'Nội dung 2'
+        : 'Section 2';
 
     // Left Column
     pptSlide.addText(headerLeft, {
-      x: leftX, y: startY, w: colW, h: 0.4,
-      fontSize: 16, fontFace: theme.fonts.title,
-      color: this.hex(colors.primary), bold: true,
+      x: leftX,
+      y: startY,
+      w: colW,
+      h: 0.4,
+      fontSize: 16,
+      fontFace: theme.fonts.title,
+      color: this.hex(colors.primary),
+      bold: true,
     });
 
     if (leftBullets.length > 0) {
-      this.renderCleanText(pptSlide, leftBullets, theme, textColor, startY + 0.45, 6.5 - startY - 0.45);
+      this.renderCleanText(
+        pptSlide,
+        leftBullets,
+        theme,
+        textColor,
+        startY + 0.45,
+        6.5 - startY - 0.45,
+      );
     }
 
     // Right Column
     pptSlide.addText(headerRight, {
-      x: rightX, y: startY, w: colW, h: 0.4,
-      fontSize: 16, fontFace: theme.fonts.title,
-      color: this.hex(colors.secondary || colors.accent || colors.primary), bold: true,
+      x: rightX,
+      y: startY,
+      w: colW,
+      h: 0.4,
+      fontSize: 16,
+      fontFace: theme.fonts.title,
+      color: this.hex(colors.secondary || colors.accent || colors.primary),
+      bold: true,
     });
 
     if (rightBullets.length > 0) {
-      this.renderCleanText(pptSlide, rightBullets, theme, textColor, startY + 0.45, 6.5 - startY - 0.45);
+      this.renderCleanText(
+        pptSlide,
+        rightBullets,
+        theme,
+        textColor,
+        startY + 0.45,
+        6.5 - startY - 0.45,
+      );
     }
   }
 
@@ -1558,14 +1969,13 @@ export class SlideExporter {
     theme: ThemeLayout,
     textColor: string,
     startY: number,
-    imageOnLeft: boolean
+    imageOnLeft: boolean,
   ) {
     const colors = theme.colors;
     const bullets: string[] = content.bullets || [];
 
     const colW = 5.6;
     const colH = Math.min(5.0, 6.5 - startY);
-    const textX = imageOnLeft ? 6.8 : 0.6;
     const imageX = imageOnLeft ? 0.6 : 6.8;
 
     if (bullets.length > 0) {
@@ -1578,9 +1988,15 @@ export class SlideExporter {
       this.addImageSafe(pptSlide, image, imageX, startY, colW, colH);
     } else {
       pptSlide.addText('🖼️  [ Visual Media ]', {
-        x: imageX, y: startY + colH / 2 - 0.4, w: colW, h: 0.8,
-        fontSize: 18, fontFace: theme.fonts.title,
-        color: this.hex(colors.primary), align: 'center', valign: 'middle',
+        x: imageX,
+        y: startY + colH / 2 - 0.4,
+        w: colW,
+        h: 0.8,
+        fontSize: 18,
+        fontFace: theme.fonts.title,
+        color: this.hex(colors.primary),
+        align: 'center',
+        valign: 'middle',
       });
     }
   }
@@ -1589,11 +2005,25 @@ export class SlideExporter {
 
   /** Default chart color palette used when LLM doesn't provide colors — complements theme colors */
   private static CHART_COLOR_SET = [
-    '#0066CC', '#00AAFF', '#10B981', '#F59E0B', '#EF4444',
-    '#8B5CF6', '#EC4899', '#14B8A6', '#F97316', '#6366F1',
+    '#0066CC',
+    '#00AAFF',
+    '#10B981',
+    '#F59E0B',
+    '#EF4444',
+    '#8B5CF6',
+    '#EC4899',
+    '#14B8A6',
+    '#F97316',
+    '#6366F1',
   ];
 
-  private renderChartSlide(pptSlide: any, content: any, theme: ThemeLayout, textColor: string, startY: number): void {
+  private renderChartSlide(
+    pptSlide: any,
+    content: any,
+    theme: ThemeLayout,
+    textColor: string,
+    startY: number,
+  ): void {
     const colors = theme.colors;
     const chart = content.chart || content.visuals?.chart;
 
@@ -1614,10 +2044,22 @@ export class SlideExporter {
     }
 
     // Chart colors: prefer LLM-provided, then theme colors, then fallback palette
-    const themePalette = [colors.primary, colors.secondary, colors.accent, '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#14B8A6', '#F97316'];
-    const chartColors = (chart.colors && chart.colors.length > 0)
-      ? chart.colors.map((c: string) => this.hex(c))
-      : series.map((_: any, i: number) => this.hex(themePalette[i % themePalette.length]));
+    const themePalette = [
+      colors.primary,
+      colors.secondary,
+      colors.accent,
+      '#10B981',
+      '#F59E0B',
+      '#EF4444',
+      '#8B5CF6',
+      '#EC4899',
+      '#14B8A6',
+      '#F97316',
+    ];
+    const chartColors =
+      chart.colors && chart.colors.length > 0
+        ? chart.colors.map((c: string) => this.hex(c))
+        : series.map((_: any, i: number) => this.hex(themePalette[i % themePalette.length]));
 
     // Fixed height for chart to avoid overlapping with text
     const chartH = 3.2;
@@ -1646,7 +2088,9 @@ export class SlideExporter {
    *   - [{ category, series1, series2 }] -> multi-series
    *   - Pre-formatted [{ labels: [], values: [] }] -> pass through
    */
-  private toPptxChartSeries(chart: any): Array<{ name: string; labels: string[]; values: number[] }> {
+  private toPptxChartSeries(
+    chart: any,
+  ): Array<{ name: string; labels: string[]; values: number[] }> {
     const data = Array.isArray(chart?.data) ? chart.data : [];
     if (data.length === 0) return [];
     if (data.every((item: any) => Array.isArray(item.labels) && Array.isArray(item.values))) {
@@ -1661,20 +2105,19 @@ export class SlideExporter {
     const ignoreKeys = new Set(['id', '_id', 'key', 'index', '__proto__']);
 
     // Heuristic: the "label" key is the first string-typed key that isn't a known ignore key
-    const labelKey = allKeys.find(k =>
-      typeof firstItem[k] === 'string' &&
-      !ignoreKeys.has(k.toLowerCase()) &&
-      !/^(value|values?|amount|count|total|sum|number|num|series)/i.test(k)
+    const labelKey = allKeys.find(
+      (k) =>
+        typeof firstItem[k] === 'string' &&
+        !ignoreKeys.has(k.toLowerCase()) &&
+        !/^(value|values?|amount|count|total|sum|number|num|series)/i.test(k),
     );
 
     if (labelKey) {
       // Single label + one or more numeric value series
-      const valueKeys = allKeys.filter(k =>
-        k !== labelKey && typeof firstItem[k] === 'number'
-      );
+      const valueKeys = allKeys.filter((k) => k !== labelKey && typeof firstItem[k] === 'number');
       if (valueKeys.length > 0) {
-        return valueKeys.map(key => ({
-          name: key === 'value' ? (chart.title || 'Value') : key,
+        return valueKeys.map((key) => ({
+          name: key === 'value' ? chart.title || 'Value' : key,
           labels: data.map((item: any, i: number) => {
             const raw = item[labelKey];
             if (raw != null) return String(raw);
@@ -1682,45 +2125,55 @@ export class SlideExporter {
           }),
           values: data.map((item: any) => {
             const v = item[key];
-            return (typeof v === 'number' && !isNaN(v)) ? v : 0;
+            return typeof v === 'number' && !isNaN(v) ? v : 0;
           }),
         }));
       }
     }
 
     // Fallback: no string label key — try numeric-only data
-    const numericKeys = allKeys.filter(k => typeof firstItem[k] === 'number');
+    const numericKeys = allKeys.filter((k) => typeof firstItem[k] === 'number');
     if (numericKeys.length >= 1) {
       // Use the first numeric key as labels, rest as values
       const labelKey2 = numericKeys[0];
       const valueKeys2 = numericKeys.slice(1);
       if (valueKeys2.length > 0) {
-        return valueKeys2.map(key => ({
-          name: key === 'value' ? (chart.title || 'Value') : key,
+        return valueKeys2.map((key) => ({
+          name: key === 'value' ? chart.title || 'Value' : key,
           labels: data.map((item: any) => String(item[labelKey2] ?? '')),
           values: data.map((item: any) => {
             const v = item[key];
-            return (typeof v === 'number' && !isNaN(v)) ? v : 0;
+            return typeof v === 'number' && !isNaN(v) ? v : 0;
           }),
         }));
       }
       // Single numeric key — treat all as one series with index labels
-      return [{
-        name: chart.title || 'Data',
-        labels: data.map((_: any, i: number) => chart.labels?.[i] || `#${i + 1}`),
-        values: data.map((item: any) => { const v = item[numericKeys[0]]; return (typeof v === 'number' && !isNaN(v)) ? v : 0; }),
-      }];
+      return [
+        {
+          name: chart.title || 'Data',
+          labels: data.map((_: any, i: number) => chart.labels?.[i] || `#${i + 1}`),
+          values: data.map((item: any) => {
+            const v = item[numericKeys[0]];
+            return typeof v === 'number' && !isNaN(v) ? v : 0;
+          }),
+        },
+      ];
     }
 
     // Last resort: try any key starting with "label" or "value"
-    const anyLabelKey = allKeys.find(k => /^label/i.test(k));
-    const anyValueKey = allKeys.find(k => /^value/i.test(k) || /^(amount|count|total)/i.test(k));
+    const anyLabelKey = allKeys.find((k) => /^label/i.test(k));
+    const anyValueKey = allKeys.find((k) => /^value/i.test(k) || /^(amount|count|total)/i.test(k));
     if (anyLabelKey && anyValueKey) {
-      return [{
-        name: chart.title || 'Data',
-        labels: data.map((item: any) => String(item[anyLabelKey] ?? '')),
-        values: data.map((item: any) => { const v = item[anyValueKey]; return (typeof v === 'number' && !isNaN(v)) ? v : 0; }),
-      }];
+      return [
+        {
+          name: chart.title || 'Data',
+          labels: data.map((item: any) => String(item[anyLabelKey] ?? '')),
+          values: data.map((item: any) => {
+            const v = item[anyValueKey];
+            return typeof v === 'number' && !isNaN(v) ? v : 0;
+          }),
+        },
+      ];
     }
 
     return [];
@@ -1738,7 +2191,13 @@ export class SlideExporter {
     return luminance > 0.6;
   }
 
-  private renderStatsSlide(pptSlide: any, content: any, theme: ThemeLayout, textColor: string, startY: number): void {
+  private renderStatsSlide(
+    pptSlide: any,
+    content: any,
+    theme: ThemeLayout,
+    textColor: string,
+    startY: number,
+  ): void {
     const colors = theme.colors;
     const stats = content.stats;
 
@@ -1767,7 +2226,10 @@ export class SlideExporter {
 
       // Card background
       pptSlide.addShape('rect', {
-        x, y, w: cardWidth, h: cardHeight,
+        x,
+        y,
+        w: cardWidth,
+        h: cardHeight,
         fill: { color: this.hex(bgHex) },
         line: { color: this.hex(colors.primary), width: 1 },
       });
@@ -1775,29 +2237,51 @@ export class SlideExporter {
       // Emoji icon — large, centered at top of card
       if (stat.icon) {
         pptSlide.addText(SlideExporter.iconToEmoji(stat.icon), {
-          x: x + 0.2, y: y + 0.1, w: cardWidth - 0.4, h: 0.55,
-          fontSize: 22, fontFace: 'Segoe UI Emoji, Apple Color Emoji, Arial',
-          color: cardTextColor, align: 'center',
+          x: x + 0.2,
+          y: y + 0.1,
+          w: cardWidth - 0.4,
+          h: 0.55,
+          fontSize: 22,
+          fontFace: 'Segoe UI Emoji, Apple Color Emoji, Arial',
+          color: cardTextColor,
+          align: 'center',
         });
       }
 
       // Stat value
       pptSlide.addText(String(stat.value), {
-        x: x + 0.2, y: y + (stat.icon ? 0.55 : 0.2), w: cardWidth - 0.4, h: 0.8,
-        fontSize: 24, fontFace: theme.fonts.title,
-        color: cardTextColor, bold: true, align: 'center',
+        x: x + 0.2,
+        y: y + (stat.icon ? 0.55 : 0.2),
+        w: cardWidth - 0.4,
+        h: 0.8,
+        fontSize: 24,
+        fontFace: theme.fonts.title,
+        color: cardTextColor,
+        bold: true,
+        align: 'center',
       });
 
       // Stat label
       pptSlide.addText(stat.label, {
-        x: x + 0.2, y: y + (stat.icon ? 1.3 : 1.0), w: cardWidth - 0.4, h: 0.6,
-        fontSize: 12, fontFace: theme.fonts.body,
-        color: cardTextColor, align: 'center',
+        x: x + 0.2,
+        y: y + (stat.icon ? 1.3 : 1.0),
+        w: cardWidth - 0.4,
+        h: 0.6,
+        fontSize: 12,
+        fontFace: theme.fonts.body,
+        color: cardTextColor,
+        align: 'center',
       });
     });
   }
 
-  private renderTimelineSlide(pptSlide: any, content: any, theme: ThemeLayout, textColor: string, startY: number): void {
+  private renderTimelineSlide(
+    pptSlide: any,
+    content: any,
+    theme: ThemeLayout,
+    textColor: string,
+    startY: number,
+  ): void {
     const colors = theme.colors;
     const timeline = content.timeline;
 
@@ -1810,11 +2294,13 @@ export class SlideExporter {
 
     const itemHeight = 1.2;
     const lineX = 1.5;
-    const dotRadius = 0.15;
 
     // Vertical timeline line
     pptSlide.addShape('line', {
-      x: lineX, y: startY, w: 0, h: timeline.length * itemHeight,
+      x: lineX,
+      y: startY,
+      w: 0,
+      h: timeline.length * itemHeight,
       line: { color: this.hex(colors.primary), width: 2 },
     });
 
@@ -1824,35 +2310,60 @@ export class SlideExporter {
       // Timeline dot with icon
       const iconEmoji = SlideExporter.iconToEmoji(item.icon);
       pptSlide.addText(iconEmoji, {
-        x: 0.05, y: y - 0.05, w: 0.4, h: 0.4,
-        fontSize: 15, fontFace: 'Segoe UI Emoji, Apple Color Emoji, Arial',
+        x: 0.05,
+        y: y - 0.05,
+        w: 0.4,
+        h: 0.4,
+        fontSize: 15,
+        fontFace: 'Segoe UI Emoji, Apple Color Emoji, Arial',
         align: 'center',
       });
 
       // Date
       pptSlide.addText(item.date, {
-        x: 0.6, y: y - 0.1, w: 0.8, h: 0.4,
-        fontSize: 10, fontFace: theme.fonts.body,
-        color: this.hex(colors.primary), bold: true, align: 'right',
+        x: 0.6,
+        y: y - 0.1,
+        w: 0.8,
+        h: 0.4,
+        fontSize: 10,
+        fontFace: theme.fonts.body,
+        color: this.hex(colors.primary),
+        bold: true,
+        align: 'right',
       });
 
       // Title
       pptSlide.addText(item.title, {
-        x: lineX + 0.3, y: y, w: 10.0, h: 0.4,
-        fontSize: 14, fontFace: theme.fonts.title,
-        color: this.hex(textColor), bold: true,
+        x: lineX + 0.3,
+        y: y,
+        w: 10.0,
+        h: 0.4,
+        fontSize: 14,
+        fontFace: theme.fonts.title,
+        color: this.hex(textColor),
+        bold: true,
       });
 
       // Description
       pptSlide.addText(item.description, {
-        x: lineX + 0.3, y: y + 0.45, w: 10.0, h: 0.6,
-        fontSize: 11, fontFace: theme.fonts.body,
+        x: lineX + 0.3,
+        y: y + 0.45,
+        w: 10.0,
+        h: 0.6,
+        fontSize: 11,
+        fontFace: theme.fonts.body,
         color: this.hex(textColor),
       });
     });
   }
 
-  private renderFlowchartSlide(pptSlide: any, content: any, theme: ThemeLayout, textColor: string, startY: number): void {
+  private renderFlowchartSlide(
+    pptSlide: any,
+    content: any,
+    theme: ThemeLayout,
+    textColor: string,
+    startY: number,
+  ): void {
     const colors = theme.colors;
     const flowchart = content.flowchart;
 
@@ -1889,17 +2400,25 @@ export class SlideExporter {
       nodePositions.set(node.id, { x: nx, y: ny, w: nodeW, h: nodeH });
 
       pptSlide.addShape(shape, {
-        x: nx, y: ny, w: nodeW, h: nodeH,
+        x: nx,
+        y: ny,
+        w: nodeW,
+        h: nodeH,
         fill: { color: this.hex(getNodeTypeColor(node.type)) },
         rectRadius: node.type === 'decision' ? 0 : 0.1,
       });
 
       pptSlide.addText(node.label, {
-        x: nx, y: ny, w: nodeW, h: nodeH,
+        x: nx,
+        y: ny,
+        w: nodeW,
+        h: nodeH,
         fontSize: isHoriz ? 9 : 10,
         fontFace: theme.fonts.body,
-        color: '#FFFFFF', bold: true,
-        align: 'center', valign: 'middle',
+        color: '#FFFFFF',
+        bold: true,
+        align: 'center',
+        valign: 'middle',
         margin: [2, 4, 2, 4],
       });
     });
@@ -1916,21 +2435,33 @@ export class SlideExporter {
           const lineX = from.x + from.w;
           const lineY = from.y + from.h / 2;
           pptSlide.addShape('line', {
-            x: lineX, y: lineY, w: to.x - lineX, h: 0,
+            x: lineX,
+            y: lineY,
+            w: to.x - lineX,
+            h: 0,
             line: { color: this.hex(colors.primary), width: 1.5, dashType: 'solid' },
           });
           // Arrow tip
           pptSlide.addText('▶', {
-            x: to.x - 0.2, y: lineY - 0.15, w: 0.3, h: 0.3,
-            fontSize: 10, color: this.hex(colors.primary),
+            x: to.x - 0.2,
+            y: lineY - 0.15,
+            w: 0.3,
+            h: 0.3,
+            fontSize: 10,
+            color: this.hex(colors.primary),
             align: 'center',
           });
           // Edge label
           if (edge.label) {
             pptSlide.addText(edge.label, {
-              x: lineX, y: lineY - 0.3, w: to.x - lineX, h: 0.3,
-              fontSize: 8, fontFace: theme.fonts.body,
-              color: this.hex(colors.textLight), align: 'center',
+              x: lineX,
+              y: lineY - 0.3,
+              w: to.x - lineX,
+              h: 0.3,
+              fontSize: 8,
+              fontFace: theme.fonts.body,
+              color: this.hex(colors.textLight),
+              align: 'center',
             });
           }
         } else {
@@ -1938,21 +2469,34 @@ export class SlideExporter {
           const lineX = from.x + from.w / 2;
           const lineY = from.y + from.h;
           pptSlide.addShape('line', {
-            x: lineX, y: lineY, w: 0, h: to.y - lineY,
+            x: lineX,
+            y: lineY,
+            w: 0,
+            h: to.y - lineY,
             line: { color: this.hex(colors.primary), width: 1.5, dashType: 'solid' },
           });
           // Arrow tip
           pptSlide.addText('▼', {
-            x: lineX - 0.15, y: to.y - 0.25, w: 0.3, h: 0.3,
-            fontSize: 10, color: this.hex(colors.primary),
+            x: lineX - 0.15,
+            y: to.y - 0.25,
+            w: 0.3,
+            h: 0.3,
+            fontSize: 10,
+            color: this.hex(colors.primary),
             align: 'center',
           });
           // Edge label
           if (edge.label) {
             pptSlide.addText(edge.label, {
-              x: lineX + 0.15, y: lineY, w: 1.5, h: to.y - lineY,
-              fontSize: 8, fontFace: theme.fonts.body,
-              color: this.hex(colors.textLight), align: 'left', valign: 'middle',
+              x: lineX + 0.15,
+              y: lineY,
+              w: 1.5,
+              h: to.y - lineY,
+              fontSize: 8,
+              fontFace: theme.fonts.body,
+              color: this.hex(colors.textLight),
+              align: 'left',
+              valign: 'middle',
             });
           }
         }
@@ -1960,7 +2504,13 @@ export class SlideExporter {
     }
   }
 
-  private renderInfographicSlide(pptSlide: any, content: any, theme: ThemeLayout, textColor: string, startY: number): void {
+  private renderInfographicSlide(
+    pptSlide: any,
+    content: any,
+    theme: ThemeLayout,
+    textColor: string,
+    startY: number,
+  ): void {
     const colors = theme.colors;
     const infographic = content.infographic;
 
@@ -1980,14 +2530,16 @@ export class SlideExporter {
     const icons = infographic.filter((e: any) => e.type === 'icon');
 
     // Calculate layout based on element types
-    const totalHeight = 6.0;
     let currentY = startY;
 
     // Render headers first
     headers.forEach((element: any) => {
       const style = element.style || {};
       pptSlide.addText(element.content, {
-        x: 1.0, y: currentY, w: 11.3, h: 0.6,
+        x: 1.0,
+        y: currentY,
+        w: 11.3,
+        h: 0.6,
         fontSize: style.fontSize || 20,
         fontFace: style.fontWeight === 'bold' ? theme.fonts.title : theme.fonts.body,
         color: this.hex(style.color || colors.primary),
@@ -2013,24 +2565,38 @@ export class SlideExporter {
 
         // Card background
         pptSlide.addShape('rect', {
-          x, y, w: cardWidth, h: cardHeight,
+          x,
+          y,
+          w: cardWidth,
+          h: cardHeight,
           fill: { color: this.hex(stat.style?.backgroundColor || colors.accent || colors.primary) },
           line: { color: this.hex(colors.primary), width: 1 },
         });
 
         // Stat value
         pptSlide.addText(String(stat.content), {
-          x: x + 0.2, y: y + 0.2, w: cardWidth - 0.4, h: 0.8,
-          fontSize: 20, fontFace: theme.fonts.title,
-          color: '#FFFFFF', bold: true, align: 'center',
+          x: x + 0.2,
+          y: y + 0.2,
+          w: cardWidth - 0.4,
+          h: 0.8,
+          fontSize: 20,
+          fontFace: theme.fonts.title,
+          color: '#FFFFFF',
+          bold: true,
+          align: 'center',
         });
 
         // Icon if available
         if (stat.icon) {
           pptSlide.addText(`[${stat.icon}]`, {
-            x: x + cardWidth - 0.6, y: y + cardHeight - 0.4, w: 0.4, h: 0.4,
-            fontSize: 14, fontFace: theme.fonts.body,
-            color: '#FFFFFF', align: 'center',
+            x: x + cardWidth - 0.6,
+            y: y + cardHeight - 0.4,
+            w: 0.4,
+            h: 0.4,
+            fontSize: 14,
+            fontFace: theme.fonts.body,
+            color: '#FFFFFF',
+            align: 'center',
           });
         }
       });
@@ -2042,7 +2608,10 @@ export class SlideExporter {
     texts.forEach((element: any) => {
       const style = element.style || {};
       pptSlide.addText(element.content, {
-        x: 1.0, y: currentY, w: 11.3, h: 0.5,
+        x: 1.0,
+        y: currentY,
+        w: 11.3,
+        h: 0.5,
         fontSize: style.fontSize || 14,
         fontFace: theme.fonts.body,
         color: this.hex(style.color || textColor),
@@ -2053,10 +2622,16 @@ export class SlideExporter {
 
     // Render icons as emoji symbols (not raw text)
     if (icons.length > 0) {
-      const iconEmojis = icons.map((el: any) => SlideExporter.iconToEmoji(el.content || el.label)).join('  ');
+      const iconEmojis = icons
+        .map((el: any) => SlideExporter.iconToEmoji(el.content || el.label))
+        .join('  ');
       pptSlide.addText(iconEmojis, {
-        x: 1.0, y: currentY, w: 11.3, h: 0.6,
-        fontSize: 24, fontFace: 'Segoe UI Emoji, Apple Color Emoji, Arial',
+        x: 1.0,
+        y: currentY,
+        w: 11.3,
+        h: 0.6,
+        fontSize: 24,
+        fontFace: 'Segoe UI Emoji, Apple Color Emoji, Arial',
         color: this.hex(colors.primary),
         align: 'center',
       });
@@ -2065,17 +2640,30 @@ export class SlideExporter {
 
     // Render remaining elements (images, charts) as structured placeholders
     [...images, ...charts].forEach((element: any) => {
-      pptSlide.addText(`[${element.type}: ${element.content || element.label || 'Visual Element'}]`, {
-        x: 1.0, y: currentY, w: 11.3, h: 0.5,
-        fontSize: 12, fontFace: theme.fonts.body,
-        color: this.hex(textColor),
-        align: 'center',
-      });
+      pptSlide.addText(
+        `[${element.type}: ${element.content || element.label || 'Visual Element'}]`,
+        {
+          x: 1.0,
+          y: currentY,
+          w: 11.3,
+          h: 0.5,
+          fontSize: 12,
+          fontFace: theme.fonts.body,
+          color: this.hex(textColor),
+          align: 'center',
+        },
+      );
       currentY += 0.6;
     });
   }
 
-  private renderImageGridSlide(pptSlide: any, content: any, theme: ThemeLayout, textColor: string, startY: number): void {
+  private renderImageGridSlide(
+    pptSlide: any,
+    content: any,
+    theme: ThemeLayout,
+    textColor: string,
+    startY: number,
+  ): void {
     const colors = theme.colors;
     const images = content.imageGrid || content.visuals?.images;
 
@@ -2087,9 +2675,15 @@ export class SlideExporter {
     }
 
     pptSlide.addText('[Image Grid]', {
-      x: 1.0, y: startY + 0.5, w: 11.3, h: 0.6,
-      fontSize: 18, fontFace: theme.fonts.title,
-      color: this.hex(colors.primary), bold: true, align: 'center',
+      x: 1.0,
+      y: startY + 0.5,
+      w: 11.3,
+      h: 0.6,
+      fontSize: 18,
+      fontFace: theme.fonts.title,
+      color: this.hex(colors.primary),
+      bold: true,
+      align: 'center',
     });
 
     // Render image placeholders
@@ -2110,7 +2704,13 @@ export class SlideExporter {
     });
   }
 
-  private renderVideoSlide(pptSlide: any, content: any, theme: ThemeLayout, textColor: string, startY: number): void {
+  private renderVideoSlide(
+    pptSlide: any,
+    content: any,
+    theme: ThemeLayout,
+    textColor: string,
+    startY: number,
+  ): void {
     const colors = theme.colors;
     const video = content.video;
 
@@ -2122,29 +2722,49 @@ export class SlideExporter {
     }
 
     pptSlide.addText(`[${video.type || 'Video'}: ${video.title || 'Embedded Video'}]`, {
-      x: 1.0, y: startY + 0.5, w: 11.3, h: 0.8,
-      fontSize: 18, fontFace: theme.fonts.title,
-      color: this.hex(colors.primary), bold: true, align: 'center',
+      x: 1.0,
+      y: startY + 0.5,
+      w: 11.3,
+      h: 0.8,
+      fontSize: 18,
+      fontFace: theme.fonts.title,
+      color: this.hex(colors.primary),
+      bold: true,
+      align: 'center',
     });
 
     // Video placeholder
     pptSlide.addShape('rect', {
-      x: 1.0, y: startY + 1.5, w: 11.3, h: 4.0,
+      x: 1.0,
+      y: startY + 1.5,
+      w: 11.3,
+      h: 4.0,
       fill: { color: '000000' },
       line: { color: this.hex(colors.primary), width: 2 },
     });
 
     pptSlide.addText('▶ Play Video', {
-      x: 1.0, y: startY + 3.0, w: 11.3, h: 0.6,
-      fontSize: 16, fontFace: theme.fonts.body,
-      color: '#FFFFFF', align: 'center', valign: 'middle',
+      x: 1.0,
+      y: startY + 3.0,
+      w: 11.3,
+      h: 0.6,
+      fontSize: 16,
+      fontFace: theme.fonts.body,
+      color: '#FFFFFF',
+      align: 'center',
+      valign: 'middle',
     });
 
     // URL
     pptSlide.addText(video.url, {
-      x: 1.0, y: startY + 5.8, w: 11.3, h: 0.4,
-      fontSize: 10, fontFace: theme.fonts.body,
-      color: this.hex(textColor), align: 'center',
+      x: 1.0,
+      y: startY + 5.8,
+      w: 11.3,
+      h: 0.4,
+      fontSize: 10,
+      fontFace: theme.fonts.body,
+      color: this.hex(textColor),
+      align: 'center',
     });
 
     // Render bullets if available
@@ -2153,7 +2773,13 @@ export class SlideExporter {
     }
   }
 
-  private renderCodeSlide(pptSlide: any, content: any, theme: ThemeLayout, textColor: string, startY: number): void {
+  private renderCodeSlide(
+    pptSlide: any,
+    content: any,
+    theme: ThemeLayout,
+    textColor: string,
+    startY: number,
+  ): void {
     const colors = theme.colors;
     const code = content.code;
 
@@ -2167,15 +2793,24 @@ export class SlideExporter {
     // Title
     if (code.title) {
       pptSlide.addText(code.title, {
-        x: 1.0, y: startY, w: 11.3, h: 0.5,
-        fontSize: 16, fontFace: theme.fonts.title,
-        color: this.hex(colors.primary), bold: true, align: 'left',
+        x: 1.0,
+        y: startY,
+        w: 11.3,
+        h: 0.5,
+        fontSize: 16,
+        fontFace: theme.fonts.title,
+        color: this.hex(colors.primary),
+        bold: true,
+        align: 'left',
       });
     }
 
     // Code block background
     pptSlide.addShape('rect', {
-      x: 0.8, y: startY + 0.6, w: 11.7, h: 4.5,
+      x: 0.8,
+      y: startY + 0.6,
+      w: 11.7,
+      h: 4.5,
       fill: { color: '1E1E1E' },
       line: { color: this.hex(colors.primary), width: 1 },
     });
@@ -2188,29 +2823,50 @@ export class SlideExporter {
       // Line numbers
       if (code.lineNumbers) {
         pptSlide.addText(String(index + 1), {
-          x: 1.0, y, w: 0.5, h: 0.3,
-          fontSize: 10, fontFace: 'Consolas, Monaco, monospace',
-          color: '#858585', align: 'right',
+          x: 1.0,
+          y,
+          w: 0.5,
+          h: 0.3,
+          fontSize: 10,
+          fontFace: 'Consolas, Monaco, monospace',
+          color: '#858585',
+          align: 'right',
         });
       }
 
       // Code text
       pptSlide.addText(line, {
-        x: code.lineNumbers ? 1.6 : 1.0, y, w: 10.7, h: 0.3,
-        fontSize: 11, fontFace: 'Consolas, Monaco, monospace',
-        color: '#D4D4D4', align: 'left',
+        x: code.lineNumbers ? 1.6 : 1.0,
+        y,
+        w: 10.7,
+        h: 0.3,
+        fontSize: 11,
+        fontFace: 'Consolas, Monaco, monospace',
+        color: '#D4D4D4',
+        align: 'left',
       });
     });
 
     // Language label
     pptSlide.addText(code.language, {
-      x: 11.0, y: startY + 0.6, w: 1.5, h: 0.3,
-      fontSize: 10, fontFace: theme.fonts.body,
-      color: this.hex(colors.accent), align: 'right',
+      x: 11.0,
+      y: startY + 0.6,
+      w: 1.5,
+      h: 0.3,
+      fontSize: 10,
+      fontFace: theme.fonts.body,
+      color: this.hex(colors.accent),
+      align: 'right',
     });
   }
 
-  private renderFAQSlide(pptSlide: any, content: any, theme: ThemeLayout, textColor: string, startY: number): void {
+  private renderFAQSlide(
+    pptSlide: any,
+    content: any,
+    theme: ThemeLayout,
+    textColor: string,
+    startY: number,
+  ): void {
     const colors = theme.colors;
     const faq = content.faq;
 
@@ -2222,9 +2878,15 @@ export class SlideExporter {
     }
 
     pptSlide.addText('Frequently Asked Questions', {
-      x: 1.0, y: startY, w: 11.3, h: 0.5,
-      fontSize: 18, fontFace: theme.fonts.title,
-      color: this.hex(colors.primary), bold: true, align: 'center',
+      x: 1.0,
+      y: startY,
+      w: 11.3,
+      h: 0.5,
+      fontSize: 18,
+      fontFace: theme.fonts.title,
+      color: this.hex(colors.primary),
+      bold: true,
+      align: 'center',
     });
 
     const itemHeight = 1.0;
@@ -2233,21 +2895,36 @@ export class SlideExporter {
 
       // Question
       pptSlide.addText(`Q: ${item.question}`, {
-        x: 0.8, y, w: 11.7, h: 0.4,
-        fontSize: 13, fontFace: theme.fonts.title,
-        color: this.hex(colors.primary), bold: true,
+        x: 0.8,
+        y,
+        w: 11.7,
+        h: 0.4,
+        fontSize: 13,
+        fontFace: theme.fonts.title,
+        color: this.hex(colors.primary),
+        bold: true,
       });
 
       // Answer
       pptSlide.addText(`A: ${item.answer}`, {
-        x: 1.0, y: y + 0.45, w: 11.3, h: 0.4,
-        fontSize: 12, fontFace: theme.fonts.body,
+        x: 1.0,
+        y: y + 0.45,
+        w: 11.3,
+        h: 0.4,
+        fontSize: 12,
+        fontFace: theme.fonts.body,
         color: this.hex(textColor),
       });
     });
   }
 
-  private renderTestimonialSlide(pptSlide: any, content: any, theme: ThemeLayout, textColor: string, startY: number): void {
+  private renderTestimonialSlide(
+    pptSlide: any,
+    content: any,
+    theme: ThemeLayout,
+    textColor: string,
+    startY: number,
+  ): void {
     const colors = theme.colors;
     const testimonials = content.testimonials;
 
@@ -2259,9 +2936,15 @@ export class SlideExporter {
     }
 
     pptSlide.addText('Customer Testimonials', {
-      x: 1.0, y: startY, w: 11.3, h: 0.5,
-      fontSize: 18, fontFace: theme.fonts.title,
-      color: this.hex(colors.primary), bold: true, align: 'center',
+      x: 1.0,
+      y: startY,
+      w: 11.3,
+      h: 0.5,
+      fontSize: 18,
+      fontFace: theme.fonts.title,
+      color: this.hex(colors.primary),
+      bold: true,
+      align: 'center',
     });
 
     const cardWidth = 5.4;
@@ -2277,37 +2960,61 @@ export class SlideExporter {
 
       // Card background
       pptSlide.addShape('rect', {
-        x, y, w: cardWidth, h: cardHeight,
+        x,
+        y,
+        w: cardWidth,
+        h: cardHeight,
         fill: { color: this.hex(colors.background) },
         line: { color: this.hex(colors.primary), width: 1 },
       });
 
       // Quote
       pptSlide.addText(`"${test.quote}"`, {
-        x: x + 0.2, y: y + 0.2, w: cardWidth - 0.4, h: 1.2,
-        fontSize: 11, fontFace: theme.fonts.body,
-        color: this.hex(textColor), italic: true,
+        x: x + 0.2,
+        y: y + 0.2,
+        w: cardWidth - 0.4,
+        h: 1.2,
+        fontSize: 11,
+        fontFace: theme.fonts.body,
+        color: this.hex(textColor),
+        italic: true,
       });
 
       // Author
       pptSlide.addText(`— ${test.author}${test.title ? ', ' + test.title : ''}`, {
-        x: x + 0.2, y: y + 1.5, w: cardWidth - 0.4, h: 0.4,
-        fontSize: 10, fontFace: theme.fonts.body,
-        color: this.hex(colors.primary), bold: true,
+        x: x + 0.2,
+        y: y + 1.5,
+        w: cardWidth - 0.4,
+        h: 0.4,
+        fontSize: 10,
+        fontFace: theme.fonts.body,
+        color: this.hex(colors.primary),
+        bold: true,
       });
 
       // Company
       if (test.company) {
         pptSlide.addText(test.company, {
-          x: x + 0.2, y: y + 1.95, w: cardWidth - 0.4, h: 0.3,
-          fontSize: 9, fontFace: theme.fonts.body,
-          color: this.hex(colors.textLight), align: 'right',
+          x: x + 0.2,
+          y: y + 1.95,
+          w: cardWidth - 0.4,
+          h: 0.3,
+          fontSize: 9,
+          fontFace: theme.fonts.body,
+          color: this.hex(colors.textLight),
+          align: 'right',
         });
       }
     });
   }
 
-  private renderPricingSlide(pptSlide: any, content: any, theme: ThemeLayout, textColor: string, startY: number): void {
+  private renderPricingSlide(
+    pptSlide: any,
+    content: any,
+    theme: ThemeLayout,
+    textColor: string,
+    startY: number,
+  ): void {
     const colors = theme.colors;
     const pricing = content.pricing;
 
@@ -2319,9 +3026,15 @@ export class SlideExporter {
     }
 
     pptSlide.addText('Pricing Plans', {
-      x: 1.0, y: startY, w: 11.3, h: 0.5,
-      fontSize: 18, fontFace: theme.fonts.title,
-      color: this.hex(colors.primary), bold: true, align: 'center',
+      x: 1.0,
+      y: startY,
+      w: 11.3,
+      h: 0.5,
+      fontSize: 18,
+      fontFace: theme.fonts.title,
+      color: this.hex(colors.primary),
+      bold: true,
+      align: 'center',
     });
 
     const cardWidth = 3.3;
@@ -2334,32 +3047,49 @@ export class SlideExporter {
       // Card background
       const bgColor = plan.highlighted ? colors.primary : colors.background;
       pptSlide.addShape('rect', {
-        x, y: startY + 0.7, w: cardWidth, h: cardHeight,
+        x,
+        y: startY + 0.7,
+        w: cardWidth,
+        h: cardHeight,
         fill: { color: this.hex(bgColor) },
         line: { color: this.hex(colors.primary), width: plan.highlighted ? 2 : 1 },
       });
 
       // Plan name
       pptSlide.addText(plan.name, {
-        x: x + 0.2, y: startY + 0.9, w: cardWidth - 0.4, h: 0.5,
-        fontSize: 14, fontFace: theme.fonts.title,
+        x: x + 0.2,
+        y: startY + 0.9,
+        w: cardWidth - 0.4,
+        h: 0.5,
+        fontSize: 14,
+        fontFace: theme.fonts.title,
         color: plan.highlighted ? '#FFFFFF' : this.hex(colors.primary),
-        bold: true, align: 'center',
+        bold: true,
+        align: 'center',
       });
 
       // Price
       pptSlide.addText(plan.price, {
-        x: x + 0.2, y: startY + 1.5, w: cardWidth - 0.4, h: 0.6,
-        fontSize: 20, fontFace: theme.fonts.title,
+        x: x + 0.2,
+        y: startY + 1.5,
+        w: cardWidth - 0.4,
+        h: 0.6,
+        fontSize: 20,
+        fontFace: theme.fonts.title,
         color: plan.highlighted ? '#FFFFFF' : this.hex(colors.accent),
-        bold: true, align: 'center',
+        bold: true,
+        align: 'center',
       });
 
       // Period
       if (plan.period) {
         pptSlide.addText(plan.period, {
-          x: x + 0.2, y: startY + 2.1, w: cardWidth - 0.4, h: 0.3,
-          fontSize: 10, fontFace: theme.fonts.body,
+          x: x + 0.2,
+          y: startY + 2.1,
+          w: cardWidth - 0.4,
+          h: 0.3,
+          fontSize: 10,
+          fontFace: theme.fonts.body,
           color: plan.highlighted ? '#FFFFFF' : this.hex(colors.textLight),
           align: 'center',
         });
@@ -2369,36 +3099,61 @@ export class SlideExporter {
       const featureYStart = startY + 2.6;
       (plan.features || []).slice(0, 5).forEach((feature: string, fIndex: number) => {
         pptSlide.addText(`• ${feature}`, {
-          x: x + 0.3, y: featureYStart + fIndex * 0.3, w: cardWidth - 0.6, h: 0.3,
-          fontSize: 10, fontFace: theme.fonts.body,
+          x: x + 0.3,
+          y: featureYStart + fIndex * 0.3,
+          w: cardWidth - 0.6,
+          h: 0.3,
+          fontSize: 10,
+          fontFace: theme.fonts.body,
           color: plan.highlighted ? '#FFFFFF' : this.hex(textColor),
         });
       });
 
       // Button
       pptSlide.addShape('rect', {
-        x: x + 0.4, y: startY + 4.0, w: cardWidth - 0.8, h: 0.4,
+        x: x + 0.4,
+        y: startY + 4.0,
+        w: cardWidth - 0.8,
+        h: 0.4,
         fill: { color: plan.highlighted ? this.hex(colors.accent) : this.hex(colors.primary) },
       });
 
       pptSlide.addText(plan.buttonText || 'Get Started', {
-        x: x + 0.4, y: startY + 4.0, w: cardWidth - 0.8, h: 0.4,
-        fontSize: 11, fontFace: theme.fonts.body,
-        color: '#FFFFFF', bold: true, align: 'center', valign: 'middle',
+        x: x + 0.4,
+        y: startY + 4.0,
+        w: cardWidth - 0.8,
+        h: 0.4,
+        fontSize: 11,
+        fontFace: theme.fonts.body,
+        color: '#FFFFFF',
+        bold: true,
+        align: 'center',
+        valign: 'middle',
       });
     });
   }
 
-  private addSlideNumber(pptSlide: any, slideNum: number, totalSlides: number, theme: ThemeLayout, colors: Record<string, string>): void {
+  private addSlideNumber(
+    pptSlide: any,
+    slideNum: number,
+    totalSlides: number,
+    theme: ThemeLayout,
+    colors: Record<string, string>,
+  ): void {
     const pos = theme.layout?.slideNumberPosition || 'bottom-right';
     let x = 11.8;
     if (pos === 'bottom-left') x = 0.6;
     if (pos === 'bottom-center') x = 5.9;
 
     pptSlide.addText(`${slideNum} / ${totalSlides}`, {
-      x, y: 7.0, w: 1.5, h: 0.4,
-      fontSize: 10, fontFace: theme.fonts.body,
-      color: this.hex(colors.textLight || '#666666'), align: 'center',
+      x,
+      y: 7.0,
+      w: 1.5,
+      h: 0.4,
+      fontSize: 10,
+      fontFace: theme.fonts.body,
+      color: this.hex(colors.textLight || '#666666'),
+      align: 'center',
     });
   }
 

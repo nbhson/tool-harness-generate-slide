@@ -11,9 +11,9 @@ export interface TextChunk {
 }
 
 export interface ChunkingConfig {
-  maxChunkSize: number;    // Max chars per chunk (default: 1500)
-  minChunkSize: number;    // Min chars to avoid tiny chunks (default: 200)
-  overlap: number;         // Overlap between chunks (default: 100)
+  maxChunkSize: number; // Max chars per chunk (default: 1500)
+  minChunkSize: number; // Min chars to avoid tiny chunks (default: 200)
+  overlap: number; // Overlap between chunks (default: 100)
 }
 
 const defaultConfig: ChunkingConfig = {
@@ -24,14 +24,14 @@ const defaultConfig: ChunkingConfig = {
 
 /**
  * Smart Text Chunker
- * 
+ *
  * Splits long text into meaningful chunks based on document structure.
  * Strategy (in priority order):
  *   1. Split by markdown headings (#, ##, ###)
  *   2. Split by paragraph breaks (\n\n)
  *   3. Split by sentence boundaries (. ! ?)
  *   4. Split by word boundaries (fallback)
- * 
+ *
  * Each chunk preserves its heading context for LLM prompts.
  */
 export class TextChunker {
@@ -49,23 +49,28 @@ export class TextChunker {
 
     // If text is short enough, return as single chunk
     if (text.length <= this.config.maxChunkSize) {
-      return [{
-        content: text.trim(),
-        position: 0,
-        charCount: text.length,
-      }];
+      return [
+        {
+          content: text.trim(),
+          position: 0,
+          charCount: text.length,
+        },
+      ];
     }
 
     // Strategy 1: Split by headings
     let chunks = this.splitByHeadings(text);
-    
+
     // Merge tiny chunks
     chunks = this.mergeTinyChunks(chunks);
 
     // Split oversized chunks further
     chunks = this.splitOversizedChunks(chunks);
 
-    log.info('Chunking complete', { chunkCount: chunks.length, avgSize: Math.round(chunks.reduce((a, c) => a + c.charCount, 0) / chunks.length) });
+    log.info('Chunking complete', {
+      chunkCount: chunks.length,
+      avgSize: Math.round(chunks.reduce((a, c) => a + c.charCount, 0) / chunks.length),
+    });
 
     return chunks;
   }
@@ -288,12 +293,14 @@ export class TextChunker {
       }
 
       // Preserve heading context in sub-chunks
-      result.push(...subChunks.map((sc, i) => ({
-        ...sc,
-        heading: sc.heading || chunk.heading,
-        headingLevel: sc.headingLevel || chunk.headingLevel,
-        position: chunk.position + i * 0.01,  // Maintain relative order
-      })));
+      result.push(
+        ...subChunks.map((sc, i) => ({
+          ...sc,
+          heading: sc.heading || chunk.heading,
+          headingLevel: sc.headingLevel || chunk.headingLevel,
+          position: chunk.position + i * 0.01, // Maintain relative order
+        })),
+      );
     }
 
     return result;
@@ -303,9 +310,11 @@ export class TextChunker {
    * Convert chunks to a formatted context string for LLM
    */
   chunksToContext(chunks: TextChunk[]): string {
-    return chunks.map((chunk, i) => {
-      const heading = chunk.heading ? `[${chunk.heading}]` : `[Section ${i + 1}]`;
-      return `${heading}\n${chunk.content}`;
-    }).join('\n\n---\n\n');
+    return chunks
+      .map((chunk, i) => {
+        const heading = chunk.heading ? `[${chunk.heading}]` : `[Section ${i + 1}]`;
+        return `${heading}\n${chunk.content}`;
+      })
+      .join('\n\n---\n\n');
   }
 }

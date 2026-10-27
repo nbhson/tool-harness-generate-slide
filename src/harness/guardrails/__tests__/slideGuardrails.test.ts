@@ -1,6 +1,6 @@
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { SlideGuardrails } from '../slideGuardrails';
-import { Slide } from '../../../schemas/slide.schema';
+import type { Slide } from '../../../schemas/slide.schema';
 
 describe('SlideGuardrails', () => {
   const guardrails = new SlideGuardrails({
@@ -48,7 +48,7 @@ describe('SlideGuardrails', () => {
     };
     const res = await guardrails.validateSlide(invalidSlide);
     expect(res.passed).toBe(false);
-    expect(res.errors.some(e => e.includes('Too many bullet points'))).toBe(true);
+    expect(res.errors.some((e) => e.includes('Too many bullet points'))).toBe(true);
   });
 
   it('should perform parallel validation across array of slides', async () => {

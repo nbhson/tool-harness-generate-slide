@@ -10,23 +10,23 @@
 
 ### Tại sao Harness Engineering?
 
-| Cách tiếp cận | Vấn đề | Giải pháp |
-|---------------|--------|-----------|
-| Prompt Engineering | Kết quả không ổn định, khó debug | Viết prompt tốt hơn |
-| Context Engineering | Chỉ cải thiện dữ liệu đầu vào | Cung cấp context phù hợp |
-| **Harness Engineering** | Không kiểm soát được hành vi AI | **Xây dựng hệ thống kiểm soát toàn diện** |
+| Cách tiếp cận           | Vấn đề                           | Giải pháp                                 |
+| ----------------------- | -------------------------------- | ----------------------------------------- |
+| Prompt Engineering      | Kết quả không ổn định, khó debug | Viết prompt tốt hơn                       |
+| Context Engineering     | Chỉ cải thiện dữ liệu đầu vào    | Cung cấp context phù hợp                  |
+| **Harness Engineering** | Không kiểm soát được hành vi AI  | **Xây dựng hệ thống kiểm soát toàn diện** |
 
 ---
 
 ## 🛠️ Tech Stack
 
-| Layer | Technology | Lý do |
-|-------|------------|-------|
-| **Language** | TypeScript | Type safety + rich ecosystem |
-| **LLM API** | Any OpenAI-compatible API | OmniRoute, OpenAI, Ollama, etc. |
-| **Slide Engine** | pptxgenjs | Tạo file PPTX chất lượng cao |
-| **Validation** | Custom guardrails + validators | Kiểm tra output |
-| **Orchestration** | Custom Harness | Multi-agent workflow |
+| Layer             | Technology                     | Lý do                           |
+| ----------------- | ------------------------------ | ------------------------------- |
+| **Language**      | TypeScript                     | Type safety + rich ecosystem    |
+| **LLM API**       | Any OpenAI-compatible API      | OmniRoute, OpenAI, Ollama, etc. |
+| **Slide Engine**  | pptxgenjs                      | Tạo file PPTX chất lượng cao    |
+| **Validation**    | Custom guardrails + validators | Kiểm tra output                 |
+| **Orchestration** | Custom Harness                 | Multi-agent workflow            |
 
 ---
 
@@ -78,16 +78,16 @@ npx tsx src/index.ts generate \
 
 #### Các tùy chọn CLI
 
-| Option | Mô tả | Mặc định |
-|--------|-------|----------|
-| `-i, --input` | Chủ đề presentation (required) | - |
-| `-f, --file` | Đọc nội dung từ file markdown | - |
-| `-t, --theme` | Theme: modern, minimal, corporate, creative, elegant, tech, bold, gradient | modern |
-| `-l, --language` | Ngôn ngữ: vi, en, ja, ko | vi |
-| `-m, --max-slides` | Số slide tối đa | 20 |
-| `-a, --aspect-ratio` | Tỷ lệ khung hình: 16:9, 4:3 | 16:9 |
-| `-o, --output` | Đường dẫn file output | presentation.pptx |
-| `--no-fallback` | Tắt auto-fallback khi LLM primary lỗi | enabled (bật) |
+| Option               | Mô tả                                                                      | Mặc định          |
+| -------------------- | -------------------------------------------------------------------------- | ----------------- |
+| `-i, --input`        | Chủ đề presentation (required)                                             | -                 |
+| `-f, --file`         | Đọc nội dung từ file markdown                                              | -                 |
+| `-t, --theme`        | Theme: modern, minimal, corporate, creative, elegant, tech, bold, gradient | modern            |
+| `-l, --language`     | Ngôn ngữ: vi, en, ja, ko                                                   | vi                |
+| `-m, --max-slides`   | Số slide tối đa                                                            | 20                |
+| `-a, --aspect-ratio` | Tỷ lệ khung hình: 16:9, 4:3                                                | 16:9              |
+| `-o, --output`       | Đường dẫn file output                                                      | presentation.pptx |
+| `--no-fallback`      | Tắt auto-fallback khi LLM primary lỗi                                      | enabled (bật)     |
 
 ### API Usage
 
@@ -105,14 +105,14 @@ const harness = new SlideHarness({
   theme: 'modern',
   guardrails: {
     maxSlides: 20,
-    brandCompliance: true
-  }
+    brandCompliance: true,
+  },
 });
 
 const presentation = await harness.generate({
   topic: 'Giới thiệu sản phẩm ABC',
   outline: ['Problem', 'Solution', 'Features', 'Pricing', 'CTA'],
-  language: 'vi'
+  language: 'vi',
 });
 
 await harness.export(presentation, 'output.pptx');
@@ -132,12 +132,12 @@ LLM_FALLBACK_MODEL=gpt-4o
 
 #### Các provider hỗ trợ
 
-| Provider | Base URL | Free Tier |
-|----------|----------|-----------|
-| **[OmniRoute](https://github.com/nbhson/OmniRoute)** | localhost:3000 | 90+ free tiers |
-| **OpenAI** | api.openai.com | - |
-| **Anthropic** (qua proxy) | api.anthropic.com | - |
-| **Ollama** (local) | localhost:11434 | ∞ free |
+| Provider                                             | Base URL          | Free Tier      |
+| ---------------------------------------------------- | ----------------- | -------------- |
+| **[OmniRoute](https://github.com/nbhson/OmniRoute)** | localhost:3000    | 90+ free tiers |
+| **OpenAI**                                           | api.openai.com    | -              |
+| **Anthropic** (qua proxy)                            | api.anthropic.com | -              |
+| **Ollama** (local)                                   | localhost:11434   | ∞ free         |
 
 #### OmniRoute (recommended)
 
@@ -217,7 +217,7 @@ sequenceDiagram
 
     User->>CLI: generate -i "topic" -t modern
     CLI->>H: harness.generate(input)
-    
+
     rect rgb(230, 240, 255)
         Note over H,IG: Phase 1: Validate Input
         H->>IG: validate(topic)
@@ -259,7 +259,7 @@ sequenceDiagram
         Note over H,EA: Phase 4: Evaluate & Retry
         H->>EA: evaluate(presentation)
         EA->>EA: DeckGuardrails + SlideGuardrails
-        
+
         alt approved
             EA-->>H: ✅ approved
         else rejected && retry < 3
@@ -355,25 +355,25 @@ tool-slide-harness/
 ```typescript
 const guardrails = {
   input: {
-    contentModeration: true,      // Kiểm tra nội dung nhạy cảm
-    topicValidation: true,        // Xác thực chủ đề hợp lệ
-    maxLength: 50000,             // Soft limit - warn nhưng không block (auto-summarize nếu quá dài)
+    contentModeration: true, // Kiểm tra nội dung nhạy cảm
+    topicValidation: true, // Xác thực chủ đề hợp lệ
+    maxLength: 50000, // Soft limit - warn nhưng không block (auto-summarize nếu quá dài)
   },
   slide: {
-    maxBulletsPerSlide: 7,        // Tối đa 7 bullet points
-    minFontSize: 18,              // Font tối thiểu 18px
-    maxTextLength: 500,           // Tối đa 500 ký tự/slide
-    requiredTitle: true,          // Mỗi slide phải có title
+    maxBulletsPerSlide: 7, // Tối đa 7 bullet points
+    minFontSize: 18, // Font tối thiểu 18px
+    maxTextLength: 500, // Tối đa 500 ký tự/slide
+    requiredTitle: true, // Mỗi slide phải có title
   },
   deck: {
-    maxSlides: 30,                // Tối đa 30 slide
-    coherenceCheck: true,         // Kiểm tra tính nhất quán
-    consistentStyle: true,        // Kiểu dáng nhất quán
+    maxSlides: 30, // Tối đa 30 slide
+    coherenceCheck: true, // Kiểm tra tính nhất quán
+    consistentStyle: true, // Kiểu dáng nhất quán
   },
   output: {
-    validatePPTX: true,           // File PPTX hợp lệ
-    checkAspectRatio: true,       // 16:9 hoặc 4:3
-  }
+    validatePPTX: true, // File PPTX hợp lệ
+    checkAspectRatio: true, // 16:9 hoặc 4:3
+  },
 };
 ```
 
@@ -381,33 +381,33 @@ const guardrails = {
 
 ```typescript
 const memory = {
-  shortTerm: { themes, colors, layouts },      // Session
+  shortTerm: { themes, colors, layouts }, // Session
   workingMemory: { contextWindow, slideCache }, // Slide context
-  longTerm: { history, successPatterns }        // History
+  longTerm: { history, successPatterns }, // History
 };
 ```
 
 ### 3. Tools (Tay chân)
 
-| Tool | Mô tả |
-|------|-------|
-| `contentGenerator` | Gọi LLM (OpenAI-compatible API), smart chunking input dài → mỗi chunk = 1 section slides |
-| `slideExporter` | Xuất file PPTX - render riêng cho từng theme (modern/minimal/corporate/creative) |
-| `textChunker` | Chia text dài thành chunks có nghĩa (split by headings → paragraphs → sentences → hard split) |
-| `validators` | Validate HTML, CSS, slide content |
+| Tool               | Mô tả                                                                                         |
+| ------------------ | --------------------------------------------------------------------------------------------- |
+| `contentGenerator` | Gọi LLM (OpenAI-compatible API), smart chunking input dài → mỗi chunk = 1 section slides      |
+| `slideExporter`    | Xuất file PPTX - render riêng cho từng theme (modern/minimal/corporate/creative)              |
+| `textChunker`      | Chia text dài thành chunks có nghĩa (split by headings → paragraphs → sentences → hard split) |
+| `validators`       | Validate HTML, CSS, slide content                                                             |
 
 ### 4. Themes (Giao diện)
 
-| Theme | Phong cách | Màu sắc | Font | Bullet style |
-|-------|-----------|---------|------|-------------|
-| `modern` | Tech/Startup, clean | Blue gradient (#0066CC→#00AAFF) | Arial + Georgia | Numbered `1. 2. 3.` |
-| `minimal` | Apple-like, whitespace-driven | Monochrome + đỏ accent | Helvetica Neue | Plain text, no markers |
-| `corporate` | Boardroom, formal | Navy (#1B365D) + gold (#C8A951) | Times New Roman | Numbered + header/footer bars |
-| `creative` | Bold, playful | Purple/Pink gradient on dark | Arial + Georgia | Emoji prefixes ✨💡🚀 |
-| `elegant` | Luxury, sophisticated | Deep Gold/Black | Playfair Display | Custom bullet markers |
-| `tech` | Cyberpunk, future | Neon Green/Dark | Roboto Mono | Code-style bullets |
-| `bold` | Editorial magazine, high-contrast | Red (#FF2D20) + orange (#FF6B35) | Arial + Georgia | Bold markers, asymmetric layouts |
-| `gradient` | Stripe/Linear style, glass morphism | Indigo (#6366F1) → pink (#EC4899) trên dark | Arial + Georgia | Gradient bullets, glass effects |
+| Theme       | Phong cách                          | Màu sắc                                     | Font             | Bullet style                     |
+| ----------- | ----------------------------------- | ------------------------------------------- | ---------------- | -------------------------------- |
+| `modern`    | Tech/Startup, clean                 | Blue gradient (#0066CC→#00AAFF)             | Arial + Georgia  | Numbered `1. 2. 3.`              |
+| `minimal`   | Apple-like, whitespace-driven       | Monochrome + đỏ accent                      | Helvetica Neue   | Plain text, no markers           |
+| `corporate` | Boardroom, formal                   | Navy (#1B365D) + gold (#C8A951)             | Times New Roman  | Numbered + header/footer bars    |
+| `creative`  | Bold, playful                       | Purple/Pink gradient on dark                | Arial + Georgia  | Emoji prefixes ✨💡🚀            |
+| `elegant`   | Luxury, sophisticated               | Deep Gold/Black                             | Playfair Display | Custom bullet markers            |
+| `tech`      | Cyberpunk, future                   | Neon Green/Dark                             | Roboto Mono      | Code-style bullets               |
+| `bold`      | Editorial magazine, high-contrast   | Red (#FF2D20) + orange (#FF6B35)            | Arial + Georgia  | Bold markers, asymmetric layouts |
+| `gradient`  | Stripe/Linear style, glass morphism | Indigo (#6366F1) → pink (#EC4899) trên dark | Arial + Georgia  | Gradient bullets, glass effects  |
 
 ```bash
 # Thử các theme khác nhau
@@ -421,10 +421,10 @@ npx tsx src/index.ts generate -i "Pitch deck" -t gradient -o gradient.pptx
 
 ### 5. Agents (Thần kinh)
 
-| Agent | Vai trò |
-|-------|---------|
-| `PlannerAgent` | Phân tích chủ đề → tạo outline (SlidePlan[]) |
-| `DesignerAgent` | Mỗi slide plan → nội dung chi tiết + validate |
+| Agent            | Vai trò                                       |
+| ---------------- | --------------------------------------------- |
+| `PlannerAgent`   | Phân tích chủ đề → tạo outline (SlidePlan[])  |
+| `DesignerAgent`  | Mỗi slide plan → nội dung chi tiết + validate |
 | `EvaluatorAgent` | Đánh giá tổng thể → approve/reject + feedback |
 
 ### 6. Feedback Loops (Cảm giác)
@@ -439,16 +439,16 @@ metrics: { successRate, avgGenerationTime, userSatisfaction, retryRate }
 
 ### 7. Performance Optimization
 
-| Component | Strategy | Impact |
-|-----------|----------|--------|
-| **Parallel Slide Design** | Batch 5 concurrent LLM calls per batch | ~4x faster slide generation |
-| **Smart Retry** | Only redesign failed slides (not all) | ~2x faster retry |
-| **Response Cache** | LRU cache with TTL for LLM responses | Avoids redundant calls |
-| **Request Coalescing** | Deduplicate identical in-flight requests | Prevents duplicate work |
-| **Circuit Breaker** | Auto failover to fallback model on failures | High availability |
-| **Parallel Validation** | `Promise.all()` for slide guardrails | Faster validation |
-| **Worker Threads** | Offload CPU-bound tasks (PPTX export) | Non-blocking main thread |
-| **Advanced Layouts** | Support for side-by-side, grid, and mixed content | Better information density |
+| Component                 | Strategy                                          | Impact                      |
+| ------------------------- | ------------------------------------------------- | --------------------------- |
+| **Parallel Slide Design** | Batch 5 concurrent LLM calls per batch            | ~4x faster slide generation |
+| **Smart Retry**           | Only redesign failed slides (not all)             | ~2x faster retry            |
+| **Response Cache**        | LRU cache with TTL for LLM responses              | Avoids redundant calls      |
+| **Request Coalescing**    | Deduplicate identical in-flight requests          | Prevents duplicate work     |
+| **Circuit Breaker**       | Auto failover to fallback model on failures       | High availability           |
+| **Parallel Validation**   | `Promise.all()` for slide guardrails              | Faster validation           |
+| **Worker Threads**        | Offload CPU-bound tasks (PPTX export)             | Non-blocking main thread    |
+| **Advanced Layouts**      | Support for side-by-side, grid, and mixed content | Better information density  |
 
 ```mermaid
 graph LR
@@ -472,32 +472,32 @@ Ngoài các layout cơ bản (title, two-column, image), engine hỗ trợ **12 
 
 ### Layout Types
 
-| Layout | Mô tả | Trường hợp sử dụng |
-|--------|-------|-------------------|
-| `chart` | Biểu đồ (bar/line/pie/area/doughnut/radar/scatter) | Dữ liệu số liệu, so sánh, phân bổ |
-| `stats` | KPI dashboard với stats cards | Metrics, performance indicators |
-| `timeline` | Timeline ngang với milestones | Lịch trình, roadmap, project plan |
-| `flowchart` | Flowchart với nodes & edges | Quy trình, workflow, decision tree |
-| `infographic` | Mixed content (text + stats + visuals) | Data storytelling, tổng quan |
-| `image-grid` | Grid ảnh 2×2, 3×1 | Gallery, portfolio, showcases |
-| `video` | Video/media placeholder | Demo, tutorial, presentation |
-| `code` | Code block | Technical slides, code walkthrough |
-| `faq` | FAQ accordion-style | Q&A, troubleshooting |
-| `testimonial` | Testimonial card | Customer quotes, case studies |
-| `pricing` | Pricing/feature comparison | Product plans, tiers |
-| `table` | Structured data table | Specifications, data comparisons |
+| Layout        | Mô tả                                              | Trường hợp sử dụng                 |
+| ------------- | -------------------------------------------------- | ---------------------------------- |
+| `chart`       | Biểu đồ (bar/line/pie/area/doughnut/radar/scatter) | Dữ liệu số liệu, so sánh, phân bổ  |
+| `stats`       | KPI dashboard với stats cards                      | Metrics, performance indicators    |
+| `timeline`    | Timeline ngang với milestones                      | Lịch trình, roadmap, project plan  |
+| `flowchart`   | Flowchart với nodes & edges                        | Quy trình, workflow, decision tree |
+| `infographic` | Mixed content (text + stats + visuals)             | Data storytelling, tổng quan       |
+| `image-grid`  | Grid ảnh 2×2, 3×1                                  | Gallery, portfolio, showcases      |
+| `video`       | Video/media placeholder                            | Demo, tutorial, presentation       |
+| `code`        | Code block                                         | Technical slides, code walkthrough |
+| `faq`         | FAQ accordion-style                                | Q&A, troubleshooting               |
+| `testimonial` | Testimonial card                                   | Customer quotes, case studies      |
+| `pricing`     | Pricing/feature comparison                         | Product plans, tiers               |
+| `table`       | Structured data table                              | Specifications, data comparisons   |
 
 ### Emoji Icon System
 
 PPTX không support icon fonts (Font Awesome, etc.). Engine auto-maps 100+ icon names → emoji symbols:
 
-| Icon Name | Emoji | Icon Name | Emoji |
-|-----------|-------|-----------|-------|
-| `trending-up` | 📈 | `users` | 👥 |
-| `chart` | 📊 | `code` | 💻 |
-| `calendar` | 📅 | `lightbulb` | 💡 |
-| `rocket` | 🚀 | `target` | 🎯 |
-| `star` | ⭐ | `check-circle` | ✅ |
+| Icon Name     | Emoji | Icon Name      | Emoji |
+| ------------- | ----- | -------------- | ----- |
+| `trending-up` | 📈    | `users`        | 👥    |
+| `chart`       | 📊    | `code`         | 💻    |
+| `calendar`    | 📅    | `lightbulb`    | 💡    |
+| `rocket`      | 🚀    | `target`       | 🎯    |
+| `star`        | ⭐    | `check-circle` | ✅    |
 
 Fallback: `✦` nếu không tìm thấy icon match.
 
@@ -505,15 +505,15 @@ Fallback: `✦` nếu không tìm thấy icon match.
 
 Tự động chọn chart type dựa trên tiêu đề slide:
 
-| Title keyword | Chart type |
-|---------------|-----------|
-| trend, growth, progress, tăng trưởng | **line** |
-| distribution, share, phân bổ, tỷ lệ | **pie** |
-| compare, comparison, so sánh, đối chiếu | **bar** |
-| overtime, history, timeline, theo thời gian | **area** |
-| radar, skill, assessment, kỹ năng, đánh giá | **radar** |
-| revenue, sales, doanh thu, budget, ngân sách | **doughnut** |
-| Không match keyword | **bar** (mặc định) |
+| Title keyword                                | Chart type         |
+| -------------------------------------------- | ------------------ |
+| trend, growth, progress, tăng trưởng         | **line**           |
+| distribution, share, phân bổ, tỷ lệ          | **pie**            |
+| compare, comparison, so sánh, đối chiếu      | **bar**            |
+| overtime, history, timeline, theo thời gian  | **area**           |
+| radar, skill, assessment, kỹ năng, đánh giá  | **radar**          |
+| revenue, sales, doanh thu, budget, ngân sách | **doughnut**       |
+| Không match keyword                          | **bar** (mặc định) |
 
 ### Adaptive Fallback Data
 
@@ -549,11 +549,11 @@ npx tsx test-new-layouts.ts
 
 ### Test Structure
 
-| File | Mô tả |
-|------|-------|
-| `__tests__/visualExport.test.ts` | Visual export integration (từng layout × theme) |
-| `__tests__/overlapTest.test.ts` | Phát hiện element overlap trên slide |
-| `test-new-layouts.ts` | Demo script sinh tất cả layouts (không phải test) |
+| File                             | Mô tả                                             |
+| -------------------------------- | ------------------------------------------------- |
+| `__tests__/visualExport.test.ts` | Visual export integration (từng layout × theme)   |
+| `__tests__/overlapTest.test.ts`  | Phát hiện element overlap trên slide              |
+| `test-new-layouts.ts`            | Demo script sinh tất cả layouts (không phải test) |
 
 ---
 
@@ -562,7 +562,7 @@ npx tsx test-new-layouts.ts
 ```mermaid
 flowchart TD
     INPUT["📄 Input: Markdown 10,000 ký tự"]
-    
+
     subgraph Chunking["TextChunker.chunk()"]
         S1["Strategy 1: Split by # headings"]
         S2["Strategy 2: Merge tiny chunks < 200 chars"]
@@ -573,7 +573,7 @@ flowchart TD
 
     INPUT --> Chunking
     Chunking --> CHUNKS["10 chunks × ~1000 chars each"]
-    
+
     subgraph Outline["generateOutlineFromChunks()"]
         direction LR
         C1["Chunk 1<br/>→ 2 slides"]
@@ -588,33 +588,33 @@ flowchart TD
 
 **So sánh: Summarize vs Chunking:**
 
-| | Summarize (cũ) | Smart Chunking (mới) |
-|---|---|---|
-| Input 10K chars | → Summary 2K chars | → 10 chunks × 1K chars |
-| Information loss | ❌ Mất ~80% chi tiết | ✅ Giữ nguyên 100% |
-| Slide quality | General overview | Chi tiết từng section |
-| LLM calls | 1 (summarize) + 1 (outline) | 1 per chunk + 1 (title) |
-| Best for | Quick overview | Deep-dive presentations |
+|                  | Summarize (cũ)              | Smart Chunking (mới)    |
+| ---------------- | --------------------------- | ----------------------- |
+| Input 10K chars  | → Summary 2K chars          | → 10 chunks × 1K chars  |
+| Information loss | ❌ Mất ~80% chi tiết        | ✅ Giữ nguyên 100%      |
+| Slide quality    | General overview            | Chi tiết từng section   |
+| LLM calls        | 1 (summarize) + 1 (outline) | 1 per chunk + 1 (title) |
+| Best for         | Quick overview              | Deep-dive presentations |
 
 ---
 
 ## 📊 Benchmark & Metrics
 
-| Metric | Không có Harness | Có Harness | Improvement |
-|--------|-------------------|------------|-------------|
-| Slide hợp lệ (validation pass) | ~60% | ~95% | +58% |
-| User satisfaction (1-5) | 2.8 | 4.2 | +50% |
-| Retry rate | 35% | 8% | -77% |
-| Style consistency | ~50% | ~92% | +84% |
+| Metric                         | Không có Harness | Có Harness | Improvement |
+| ------------------------------ | ---------------- | ---------- | ----------- |
+| Slide hợp lệ (validation pass) | ~60%             | ~95%       | +58%        |
+| User satisfaction (1-5)        | 2.8              | 4.2        | +50%        |
+| Retry rate                     | 35%              | 8%         | -77%        |
+| Style consistency              | ~50%             | ~92%       | +84%        |
 
 ### Performance (10 slides / 20 slides / 30 slides)
 
-| Scenario | Before | After | Speedup |
-|----------|--------|-------|---------|
-| 10 slides | ~35s | ~8s | **4.4x** |
-| 20 slides | ~65s | ~15s | **4.3x** |
-| 30 slides | ~120s | ~25s | **4.8x** |
-| Retry (1 slide failed) | 2-3x full regen | 1.2-1.5x partial | **~2x** |
+| Scenario               | Before          | After            | Speedup  |
+| ---------------------- | --------------- | ---------------- | -------- |
+| 10 slides              | ~35s            | ~8s              | **4.4x** |
+| 20 slides              | ~65s            | ~15s             | **4.3x** |
+| 30 slides              | ~120s           | ~25s             | **4.8x** |
+| Retry (1 slide failed) | 2-3x full regen | 1.2-1.5x partial | **~2x**  |
 
 ---
 

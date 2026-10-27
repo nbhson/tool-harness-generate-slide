@@ -5,11 +5,11 @@ const log = logger.child('RequestCoalescer');
 
 /**
  * Request Coalescer / Deduplication
- * 
+ *
  * Prevents duplicate in-flight requests. If multiple callers request the
  * same content simultaneously, only one LLM call is made and the result
  * is shared across all callers.
- * 
+ *
  * Useful when parallel slide generation produces similar prompts.
  */
 export class RequestCoalescer {

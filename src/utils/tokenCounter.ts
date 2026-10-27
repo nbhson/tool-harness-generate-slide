@@ -1,4 +1,10 @@
-import { countTokens } from './helpers';
+/**
+ * Estimate token count for a text string.
+ * Rough approximation: ~3.5 chars per token.
+ */
+export function countTokens(text: string): number {
+  return Math.ceil(text.length / 3.5);
+}
 
 export class TokenCounter {
   private totalTokens: number = 0;
@@ -28,7 +34,8 @@ export class TokenCounter {
     return {
       totalTokens: this.totalTokens,
       requestCount: this.requestCount,
-      avgTokensPerRequest: this.requestCount > 0 ? Math.round(this.totalTokens / this.requestCount) : 0,
+      avgTokensPerRequest:
+        this.requestCount > 0 ? Math.round(this.totalTokens / this.requestCount) : 0,
     };
   }
 }

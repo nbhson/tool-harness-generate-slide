@@ -1,9 +1,9 @@
-import { Slide, SlideContent, SlideLayout } from '../schemas/slide.schema';
-import { ContentGenerator, SlidePlan } from '../harness/tools/contentGenerator';
-import { ContextManager } from '../harness/context/contextManager';
-import { SlideGuardrails } from '../harness/guardrails/slideGuardrails';
-import { WorkingMemory } from '../harness/memory/workingMemory';
-import { ConcurrencyPool, TaskResult } from '../utils/concurrency';
+import type { Slide } from '../schemas/slide.schema';
+import type { ContentGenerator, SlidePlan } from '../harness/tools/contentGenerator';
+import type { ContextManager } from '../harness/context/contextManager';
+import type { SlideGuardrails } from '../harness/guardrails/slideGuardrails';
+import type { WorkingMemory } from '../harness/memory/workingMemory';
+import { ConcurrencyPool } from '../utils/concurrency';
 import { generateId } from '../utils/helpers';
 import { logger } from '../utils/logger';
 
@@ -30,7 +30,7 @@ export class DesignerAgent {
     contextManager: ContextManager,
     slideGuardrails: SlideGuardrails,
     workingMemory: WorkingMemory,
-    options?: { batchSize?: number }
+    options?: { batchSize?: number },
   ) {
     this.contentGenerator = contentGenerator;
     this.contextManager = contextManager;
@@ -45,7 +45,7 @@ export class DesignerAgent {
    */
   async designSlides(
     slidePlans: SlidePlan[],
-    onProgress?: (completed: number, total: number) => void
+    onProgress?: (completed: number, total: number) => void,
   ): Promise<DesignerResult> {
     log.info('Designing slides (parallel batches)...', {
       count: slidePlans.length,
@@ -63,22 +63,29 @@ export class DesignerAgent {
       const globalOffset = batchIdx * this.batchSize;
 
       // Each task captures the GLOBAL index
-      const tasks = batch.map((plan, localIdx) => async (): Promise<{ globalIndex: number; slide: Slide }> => {
-        const globalIndex = globalOffset + localIdx;
-        const previousSummaries = this.workingMemory.getContextWindow();
-        const context = this.contextManager.buildDesignerContext(globalIndex, slidePlans.length, plan, previousSummaries);
-        const content = await this.contentGenerator.generateSlideContent(context, plan);
+      const tasks = batch.map(
+        (plan, localIdx) => async (): Promise<{ globalIndex: number; slide: Slide }> => {
+          const globalIndex = globalOffset + localIdx;
+          const previousSummaries = this.workingMemory.getContextWindow();
+          const context = this.contextManager.buildDesignerContext(
+            globalIndex,
+            slidePlans.length,
+            plan,
+            previousSummaries,
+          );
+          const content = await this.contentGenerator.generateSlideContent(context, plan);
 
-        const slide: Slide = {
-          id: generateId(),
-          index: globalIndex,
-          content,
-          isValid: false,
-          validationErrors: [],
-        };
+          const slide: Slide = {
+            id: generateId(),
+            index: globalIndex,
+            content,
+            isValid: false,
+            validationErrors: [],
+          };
 
-        return { globalIndex, slide };
-      });
+          return { globalIndex, slide };
+        },
+      );
 
       // Run batch in parallel
       const pool = new ConcurrencyPool({ concurrency: this.batchSize, adaptive: true });
@@ -99,11 +106,15 @@ export class DesignerAgent {
           slide.validationErrors = validation.errors;
 
           if (!validation.passed) {
-            errors.push(`Slide ${globalIndex + 1} validation failed: ${validation.errors.join('; ')}`);
+            errors.push(
+              `Slide ${globalIndex + 1} validation failed: ${validation.errors.join('; ')}`,
+            );
           }
 
           slides[globalIndex] = slide;
-          this.contextManager.addSlideSummary(`Slide ${globalIndex + 1}: ${slide.content.title} (${slide.content.layout})`);
+          this.contextManager.addSlideSummary(
+            `Slide ${globalIndex + 1}: ${slide.content.title} (${slide.content.layout})`,
+          );
           this.workingMemory.setCurrentSlideIndex(globalIndex);
         } else {
           // Fallback slide
@@ -116,10 +127,13 @@ export class DesignerAgent {
             content: {
               title: plan.title,
               subtitle: plan.subtitle || '',
-              bullets: plan.bullets.length > 0 ? plan.bullets : [
-                `**Tổng quan**: Phân tích thông tin chi tiết về ${plan.title}`,
-                '**Giải pháp**: Tối ưu hóa và nâng cao hiệu quả triển khai',
-              ],
+              bullets:
+                plan.bullets.length > 0
+                  ? plan.bullets
+                  : [
+                      `**Tổng quan**: Phân tích thông tin chi tiết về ${plan.title}`,
+                      '**Giải pháp**: Tối ưu hóa và nâng cao hiệu quả triển khai',
+                    ],
               notes: plan.notes,
               layout: plan.layout,
             },
@@ -133,14 +147,14 @@ export class DesignerAgent {
       }
 
       log.info(`Batch ${batchIdx + 1}/${batches.length} completed`, {
-        succeeded: batchResults.filter(r => r.status === 'fulfilled').length,
-        failed: batchResults.filter(r => r.status === 'rejected').length,
+        succeeded: batchResults.filter((r) => r.status === 'fulfilled').length,
+        failed: batchResults.filter((r) => r.status === 'rejected').length,
       });
     }
 
     log.info('Design completed', {
       total: slides.length,
-      valid: slides.filter(s => s.isValid).length,
+      valid: slides.filter((s) => s.isValid).length,
       errors: errors.length,
     });
 
@@ -167,7 +181,7 @@ export class DesignerAgent {
     failedIndices: number[],
     existingSlides: Slide[],
     feedback?: string[],
-    onProgress?: (completed: number, total: number) => void
+    onProgress?: (completed: number, total: number) => void,
   ): Promise<DesignerResult> {
     log.info('Redesigning failed slides only...', {
       failedCount: failedIndices.length,
@@ -178,32 +192,40 @@ export class DesignerAgent {
     const errors: string[] = [];
 
     // Create tasks only for failed slides
-    const tasks = failedIndices.map((slideIndex) => async (): Promise<{ index: number; slide: Slide }> => {
-      const plan = slidePlans[slideIndex];
-      const previousSummaries = this.workingMemory.getContextWindow();
-      const context = this.contextManager.buildDesignerContext(slideIndex, slidePlans.length, plan, previousSummaries);
+    const tasks = failedIndices.map(
+      (slideIndex) => async (): Promise<{ index: number; slide: Slide }> => {
+        const plan = slidePlans[slideIndex];
+        const previousSummaries = this.workingMemory.getContextWindow();
+        const context = this.contextManager.buildDesignerContext(
+          slideIndex,
+          slidePlans.length,
+          plan,
+          previousSummaries,
+        );
 
-      // Add feedback context for the retry
-      const retryContext = feedback && feedback.length > 0
-        ? `${context}\n\nPREVIOUS ERRORS TO FIX:\n${feedback.map(f => `- ${f}`).join('\n')}`
-        : context;
+        // Add feedback context for the retry
+        const retryContext =
+          feedback && feedback.length > 0
+            ? `${context}\n\nPREVIOUS ERRORS TO FIX:\n${feedback.map((f) => `- ${f}`).join('\n')}`
+            : context;
 
-      const content = await this.contentGenerator.generateSlideContent(retryContext, plan);
+        const content = await this.contentGenerator.generateSlideContent(retryContext, plan);
 
-      const slide: Slide = {
-        id: generateId(),
-        index: slideIndex,
-        content,
-        isValid: false,
-        validationErrors: [],
-      };
+        const slide: Slide = {
+          id: generateId(),
+          index: slideIndex,
+          content,
+          isValid: false,
+          validationErrors: [],
+        };
 
-      const validation = await this.slideGuardrails.validateSlide(slide);
-      slide.isValid = validation.passed;
-      slide.validationErrors = validation.errors;
+        const validation = await this.slideGuardrails.validateSlide(slide);
+        slide.isValid = validation.passed;
+        slide.validationErrors = validation.errors;
 
-      return { index: slideIndex, slide };
-    });
+        return { index: slideIndex, slide };
+      },
+    );
 
     // Run redesign tasks in parallel (no batching needed, usually few slides)
     const pool = new ConcurrencyPool({ concurrency: this.batchSize, adaptive: true });
@@ -217,7 +239,9 @@ export class DesignerAgent {
         slides[index] = slide;
 
         if (!slide.isValid) {
-          errors.push(`Slide ${index + 1} still invalid after redesign: ${slide.validationErrors.join('; ')}`);
+          errors.push(
+            `Slide ${index + 1} still invalid after redesign: ${slide.validationErrors.join('; ')}`,
+          );
         }
       } else {
         const slideIndex = failedIndices[result.index];

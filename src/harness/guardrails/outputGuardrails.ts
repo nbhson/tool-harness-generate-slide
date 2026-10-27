@@ -1,4 +1,4 @@
-import { Presentation } from '../../schemas/presentation.schema';
+import type { Presentation } from '../../schemas/presentation.schema';
 import { logger } from '../../utils/logger';
 
 export interface OutputGuardrailResult {

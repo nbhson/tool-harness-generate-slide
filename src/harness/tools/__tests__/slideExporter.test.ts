@@ -1,6 +1,6 @@
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { SlideExporter } from '../slideExporter';
-import { Presentation } from '../../../schemas/presentation.schema';
+import type { Presentation } from '../../../schemas/presentation.schema';
 
 describe('SlideExporter', () => {
   describe('parseMarkdownToRuns', () => {
@@ -56,7 +56,11 @@ describe('SlideExporter', () => {
   describe('cleanMarkdownText', () => {
     it('should strip markdown headers, markdown links, double bullet markers, and orphan link brackets', () => {
       expect(SlideExporter.cleanMarkdownText('### So Sánh: Tổng Quan')).toBe('So Sánh: Tổng Quan');
-      expect(SlideExporter.cleanMarkdownText('• - [Harness Engineering: Kỹ Thuật AI](#harness-engineering)')).toBe('Harness Engineering: Kỹ Thuật AI');
+      expect(
+        SlideExporter.cleanMarkdownText(
+          '• - [Harness Engineering: Kỹ Thuật AI](#harness-engineering)',
+        ),
+      ).toBe('Harness Engineering: Kỹ Thuật AI');
       expect(SlideExporter.cleanMarkdownText('[Mục Lục](#mục-lục)')).toBe('Mục Lục');
       expect(SlideExporter.cleanMarkdownText('Giới Thiệu](#1-giới-thiệu)')).toBe('Giới Thiệu');
       expect(SlideExporter.cleanMarkdownText('- - Bullet text')).toBe('Bullet text');

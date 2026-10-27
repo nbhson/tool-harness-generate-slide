@@ -1,11 +1,11 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { RequestCoalescer } from '../requestCoalescer';
 
 describe('RequestCoalescer', () => {
   it('should deduplicate concurrent in-flight requests with identical keys', async () => {
     const coalescer = new RequestCoalescer();
     const fn = vi.fn().mockImplementation(async () => {
-      await new Promise(r => setTimeout(r, 50));
+      await new Promise((r) => setTimeout(r, 50));
       return { result: 'data' };
     });
 

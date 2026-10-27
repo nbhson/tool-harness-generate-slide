@@ -17,7 +17,7 @@ export interface InputGuardrailConfig {
 const defaultConfig: InputGuardrailConfig = {
   contentModeration: true,
   topicValidation: true,
-  maxLength: 100000,   // Cho phép input dài (bài viết, markdown file)
+  maxLength: 100000, // Cho phép input dài (bài viết, markdown file)
   minLength: 5,
   blockedTopics: [],
 };
@@ -39,11 +39,15 @@ export class InputGuardrails {
 
     // Length validation - soft limit: warn but don't block
     if (input.length > this.config.maxLength) {
-      warnings.push(`Input is very long (${input.length} chars). Content will be truncated to fit LLM context window.`);
+      warnings.push(
+        `Input is very long (${input.length} chars). Content will be truncated to fit LLM context window.`,
+      );
     }
 
     if (input.length < this.config.minLength) {
-      errors.push(`Input is too short. Minimum ${this.config.minLength} characters required (got ${input.length})`);
+      errors.push(
+        `Input is too short. Minimum ${this.config.minLength} characters required (got ${input.length})`,
+      );
     }
 
     // Content moderation
@@ -71,7 +75,11 @@ export class InputGuardrails {
     return { passed, errors, warnings };
   }
 
-  private moderateContent(input: string): { passed: boolean; errors: string[]; warnings: string[] } {
+  private moderateContent(input: string): {
+    passed: boolean;
+    errors: string[];
+    warnings: string[];
+  } {
     const errors: string[] = [];
     const warnings: string[] = [];
 

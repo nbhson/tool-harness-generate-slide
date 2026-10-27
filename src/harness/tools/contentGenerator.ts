@@ -1,7 +1,21 @@
-import { SlideContent, SlideLayout, SlideTable, TimelineItem, Flowchart, InfographicElement, StatItem, FAQItem, TestimonialItem, PricingItem, CodeBlock, VideoEmbed, SlideImage, SlideChart } from '../../schemas/slide.schema';
+import type {
+  CodeBlock,
+  FAQItem,
+  Flowchart,
+  InfographicElement,
+  PricingItem,
+  SlideChart,
+  SlideContent,
+  SlideImage,
+  SlideLayout,
+  StatItem,
+  TestimonialItem,
+  TimelineItem,
+  VideoEmbed,
+} from '../../schemas/slide.schema';
 import { logger } from '../../utils/logger';
-import { generateId } from '../../utils/helpers';
-import { TextChunker, TextChunk } from '../../utils/textChunker';
+import type { TextChunk } from '../../utils/textChunker';
+import { TextChunker } from '../../utils/textChunker';
 import { ConcurrencyPool } from '../../utils/concurrency';
 import { CircuitBreaker } from '../../utils/circuitBreaker';
 import { RequestCoalescer } from '../../utils/requestCoalescer';
@@ -21,7 +35,7 @@ export interface SlidePlan {
   bullets: string[];
   subtitle?: string;
   notes?: string;
-  chunkIndex?: number;    // Which chunk this slide comes from
+  chunkIndex?: number; // Which chunk this slide comes from
 }
 
 export interface ContentGeneratorConfig {
@@ -51,7 +65,7 @@ export class ContentGenerator {
   async generateSlideContent(
     context: string,
     plan: SlidePlan,
-    onStreamChunk?: (chunk: string) => void
+    onStreamChunk?: (chunk: string) => void,
   ): Promise<SlideContent> {
     log.info(`Generating content for slide: ${plan.title}`);
 
@@ -61,14 +75,18 @@ export class ContentGenerator {
       const response = await this.callLLM(prompt, onStreamChunk);
       const content = this.parseContentResponse(response, plan);
       return content;
-    } catch (error) {
+    } catch {
       log.warn(`LLM unavailable for slide "${plan.title}", using plan content as fallback`);
       // Use plan's bullets directly - they already came from outline/LLM/chunk extraction
       return this.generateEnhancedFallback(plan);
     }
   }
 
-  async generateOutline(topic: string, outline?: string[], maxSlides?: number): Promise<SlidePlan[]> {
+  async generateOutline(
+    topic: string,
+    outline?: string[],
+    maxSlides?: number,
+  ): Promise<SlidePlan[]> {
     log.info('Generating presentation outline', { topic: topic.substring(0, 100) + '...' });
 
     // Smart chunking for long input
@@ -87,12 +105,19 @@ export class ContentGenerator {
   /**
    * Short input: direct outline generation (existing behavior)
    */
-  private async generateOutlineFromText(topic: string, outline?: string[], maxSlides?: number): Promise<SlidePlan[]> {
+  private async generateOutlineFromText(
+    topic: string,
+    outline?: string[],
+    maxSlides?: number,
+  ): Promise<SlidePlan[]> {
     const prompt = this.buildOutlinePrompt(topic, outline, maxSlides);
 
     try {
       const response = await this.callLLM(prompt);
-      log.info('Outline LLM response received', { length: response.length, preview: response.substring(0, 200) });
+      log.info('Outline LLM response received', {
+        length: response.length,
+        preview: response.substring(0, 200),
+      });
       const plans = this.parseOutlineResponse(response);
       return plans.length > 0 ? plans : this.generateDefaultOutline(topic);
     } catch (error) {
@@ -106,11 +131,12 @@ export class ContentGenerator {
    * Long input: use chunks to create section-aware outline
    * Each chunk becomes a section with 1-3 slides
    */
-  private async generateOutlineFromChunks(chunks: TextChunk[], outline?: string[], maxSlides?: number): Promise<SlidePlan[]> {
+  private async generateOutlineFromChunks(
+    chunks: TextChunk[],
+    outline?: string[],
+    maxSlides?: number,
+  ): Promise<SlidePlan[]> {
     const maxSlidesPerChunk = maxSlides ? Math.ceil(maxSlides / chunks.length) : 3;
-
-    // Build a compact overview from chunk headings for the title slide
-    const overview = chunks.map(c => c.heading || `Section ${c.position + 1}`).join(', ');
 
     // Title slide (no LLM call needed)
     const titlePlan: SlidePlan = {
@@ -129,45 +155,62 @@ export class ContentGenerator {
     };
 
     // Create parallel tasks for all chunks
-    const chunkTasks = chunks.map((chunk, i) => async (): Promise<{ chunkIndex: number; plans: SlidePlan[] }> => {
-      try {
-        const prompt = this.buildChunkOutlinePrompt(chunk, maxSlidesPerChunk);
-        log.info(`Calling LLM for chunk ${i}/${chunks.length}`, { heading: chunk.heading, contentLength: chunk.charCount });
-        const response = await this.callLLM(prompt);
-        log.info(`LLM response received for chunk ${i}`, { responseLength: response.length, preview: response.substring(0, 200) });
-        const chunkPlans = this.parseOutlineResponse(response);
+    const chunkTasks = chunks.map(
+      (chunk, i) => async (): Promise<{ chunkIndex: number; plans: SlidePlan[] }> => {
+        try {
+          const prompt = this.buildChunkOutlinePrompt(chunk, maxSlidesPerChunk);
+          log.info(`Calling LLM for chunk ${i}/${chunks.length}`, {
+            heading: chunk.heading,
+            contentLength: chunk.charCount,
+          });
+          const response = await this.callLLM(prompt);
+          log.info(`LLM response received for chunk ${i}`, {
+            responseLength: response.length,
+            preview: response.substring(0, 200),
+          });
+          const chunkPlans = this.parseOutlineResponse(response);
 
-        if (chunkPlans.length === 0) {
-          log.warn(`Chunk ${i} LLM response had no parseable slides, using template`, { responsePreview: response.substring(0, 500) });
-          return {
-            chunkIndex: i,
-            plans: [{
-              title: chunk.heading || `Section ${i + 1}`,
-              layout: 'title-bullets',
-              bullets: this.extractKeyPoints(chunk.content),
+          if (chunkPlans.length === 0) {
+            log.warn(`Chunk ${i} LLM response had no parseable slides, using template`, {
+              responsePreview: response.substring(0, 500),
+            });
+            return {
               chunkIndex: i,
-            }],
-          };
-        } else {
+              plans: [
+                {
+                  title: chunk.heading || `Section ${i + 1}`,
+                  layout: 'title-bullets',
+                  bullets: this.extractKeyPoints(chunk.content),
+                  chunkIndex: i,
+                },
+              ],
+            };
+          } else {
+            return {
+              chunkIndex: i,
+              plans: chunkPlans.map((p) => ({ ...p, chunkIndex: i })),
+            };
+          }
+        } catch (error) {
+          const errMsg = error instanceof Error ? error.message : JSON.stringify(error);
+          log.warn(`Chunk ${i} outline failed, using extracted key points`, {
+            error: errMsg,
+            chunkHeading: chunk.heading,
+          });
           return {
             chunkIndex: i,
-            plans: chunkPlans.map(p => ({ ...p, chunkIndex: i })),
+            plans: [
+              {
+                title: chunk.heading || `Section ${i + 1}`,
+                layout: 'title-bullets',
+                bullets: this.extractKeyPoints(chunk.content),
+                chunkIndex: i,
+              },
+            ],
           };
         }
-      } catch (error) {
-        const errMsg = error instanceof Error ? error.message : JSON.stringify(error);
-        log.warn(`Chunk ${i} outline failed, using extracted key points`, { error: errMsg, chunkHeading: chunk.heading });
-        return {
-          chunkIndex: i,
-          plans: [{
-            title: chunk.heading || `Section ${i + 1}`,
-            layout: 'title-bullets',
-            bullets: this.extractKeyPoints(chunk.content),
-            chunkIndex: i,
-          }],
-        };
-      }
-    });
+      },
+    );
 
     // Execute all chunk outlines in parallel
     log.info(`Processing ${chunkTasks.length} chunks in parallel`);
@@ -179,7 +222,7 @@ export class ContentGenerator {
 
     // Sort by chunk index to maintain order
     const sortedResults = results
-      .filter(r => r.status === 'fulfilled' && r.value)
+      .filter((r) => r.status === 'fulfilled' && r.value)
       .sort((a, b) => (a.value?.chunkIndex || 0) - (b.value?.chunkIndex || 0));
 
     for (const result of sortedResults) {
@@ -228,18 +271,21 @@ Rules:
    * Extract key points from text (fallback when LLM fails)
    */
   private extractKeyPoints(text: string): string[] {
-    const sentences = text.split(/[.!?\n]+/).filter(s => s.trim().length > 10);
-    return sentences.slice(0, 15).map(s => {
-      const clean = SlideExporter.cleanMarkdownText(s);
-      if (!clean) return '';
-      const words = clean.split(/\s+/);
-      if (words.length > 3) {
-        const header = words.slice(0, 3).join(' ');
-        const rest = words.slice(3).join(' ');
-        return `**${header}**: ${rest}`;
-      }
-      return clean;
-    }).filter(s => s.length > 0);
+    const sentences = text.split(/[.!?\n]+/).filter((s) => s.trim().length > 10);
+    return sentences
+      .slice(0, 15)
+      .map((s) => {
+        const clean = SlideExporter.cleanMarkdownText(s);
+        if (!clean) return '';
+        const words = clean.split(/\s+/);
+        if (words.length > 3) {
+          const header = words.slice(0, 3).join(' ');
+          const rest = words.slice(3).join(' ');
+          return `**${header}**: ${rest}`;
+        }
+        return clean;
+      })
+      .filter((s) => s.length > 0);
   }
 
   /**
@@ -264,7 +310,7 @@ Rules:
     return this.chunker.chunksToContext(chunks);
   }
 
-   private buildOutlinePrompt(topic: string, outline?: string[], maxSlides?: number): string {
+  private buildOutlinePrompt(topic: string, outline?: string[], maxSlides?: number): string {
     let prompt = `You are an executive presentation architect. Create an in-depth, highly detailed presentation outline for: "${topic}"
 
 ${maxSlides ? `Maximum ${maxSlides} slides.` : 'Aim for 6-12 slides.'}
@@ -298,28 +344,46 @@ Rules:
 
   private buildContentPrompt(context: string, plan: SlidePlan): string {
     const layoutInstructions: Record<string, string> = {
-      'title': 'Create a high-impact main title and an engaging, informative subtitle. Leave bullets array empty. Respond with: {title, subtitle}',
-      'title-bullets': 'Provide 5-7 rich, highly detailed bullet points. EVERY bullet MUST start with a bold key concept header: "**Header**: Thorough explanation with specific technical context, mechanisms, background, or action items (30-60 words per point)".',
-      'two-column': 'Provide 4-6 detailed bullet points structured as two pairs of contrasting or complementary concepts. Format: "**Concept**: Deep, complete explanation (30-50 words)".',
-      'comparison': 'Provide 4-6 detailed bullet points comparing options, solutions, or before/after states. Format: "**Option A / Pros**: Deep, detailed comparative analysis (30-50 words)".',
-      'section-break': 'Provide a bold section title and a brief motivational or summary subtitle. Leave bullets array empty or 2-3 detailed highlights.',
-      'quote': 'Provide an impactful quote as the title or subtitle. Place author or source attribution in subtitle or notes.',
-      'chart': 'MUST provide chart object with type, data array, title, labels, and colors. Include 4-5 key data insights in bullets array starting with bold metrics: "**Metric (+45%)**: Detailed analytical summary".',
-      'table': 'MUST provide table object with headers and rows arrays. Include explanatory bullets describing key insights from the table data.',
-      'timeline': 'MUST provide timeline array with date, title, description, and optional icon for each milestone. Format: [{date: "YYYY-MM-DD", title: "Milestone", description: "Detailed description", icon: "calendar"}]',
-      'flowchart': 'MUST provide flowchart object with nodes and edges arrays. Nodes must have id, label, and type (start/end/process/decision/input/output). Edges must have from, to, and optional label. Direction can be horizontal or vertical.',
-      'infographic': 'MUST provide infographic array with elements containing type (header/text/image/chart/icon/stat), content, position (x,y,width,height), and optional style. Create a visually balanced composition.',
-      'stats': 'MUST provide stats array with value, label, optional icon and color for each statistic. Format: [{value: "45%", label: "Growth Rate", icon: "trending-up", color: "#22c55e"}]',
-      'image-grid': 'MUST provide imageGrid array with image objects containing url or base64, alt text, and optional position. Include bullets describing each image.',
-      'video': 'MUST provide video object with url, type (youtube/vimeo/mp4/webm), optional title, poster, autoplay, and controls. Include bullets describing video content and key takeaways.',
-      'code': 'MUST provide code object with language, code content, optional title, and lineNumbers. Include bullets explaining the code and its significance.',
-      'faq': 'MUST provide faq array with question and answer pairs. Format: [{question: "Frequent question", answer: "Detailed answer (30-50 words)"}]',
-      'testimonial': 'MUST provide testimonials array with quote, author, optional title, company, and avatar. Format: [{quote: "Customer quote", author: "Name", title: "Position", company: "Company", avatar: "url"}]',
-      'pricing': 'MUST provide pricing array with name, price, period, features, highlighted, and buttonText. Format: [{name: "Plan Name", price: "$99", period: "/month", features: ["Feature 1", "Feature 2"], highlighted: true, buttonText: "Get Started"}]',
+      title:
+        'Create a high-impact main title and an engaging, informative subtitle. Leave bullets array empty. Respond with: {title, subtitle}',
+      'title-bullets':
+        'Provide 5-7 rich, highly detailed bullet points. EVERY bullet MUST start with a bold key concept header: "**Header**: Thorough explanation with specific technical context, mechanisms, background, or action items (30-60 words per point)".',
+      'two-column':
+        'Provide 4-6 detailed bullet points structured as two pairs of contrasting or complementary concepts. Format: "**Concept**: Deep, complete explanation (30-50 words)".',
+      comparison:
+        'Provide 4-6 detailed bullet points comparing options, solutions, or before/after states. Format: "**Option A / Pros**: Deep, detailed comparative analysis (30-50 words)".',
+      'section-break':
+        'Provide a bold section title and a brief motivational or summary subtitle. Leave bullets array empty or 2-3 detailed highlights.',
+      quote:
+        'Provide an impactful quote as the title or subtitle. Place author or source attribution in subtitle or notes.',
+      chart:
+        'MUST provide chart object with type, data array, title, labels, and colors. Include 4-5 key data insights in bullets array starting with bold metrics: "**Metric (+45%)**: Detailed analytical summary".',
+      table:
+        'MUST provide table object with headers and rows arrays. Include explanatory bullets describing key insights from the table data.',
+      timeline:
+        'MUST provide timeline array with date, title, description, and optional icon for each milestone. Format: [{date: "YYYY-MM-DD", title: "Milestone", description: "Detailed description", icon: "calendar"}]',
+      flowchart:
+        'MUST provide flowchart object with nodes and edges arrays. Nodes must have id, label, and type (start/end/process/decision/input/output). Edges must have from, to, and optional label. Direction can be horizontal or vertical.',
+      infographic:
+        'MUST provide infographic array with elements containing type (header/text/image/chart/icon/stat), content, position (x,y,width,height), and optional style. Create a visually balanced composition.',
+      stats:
+        'MUST provide stats array with value, label, optional icon and color for each statistic. Format: [{value: "45%", label: "Growth Rate", icon: "trending-up", color: "#22c55e"}]',
+      'image-grid':
+        'MUST provide imageGrid array with image objects containing url or base64, alt text, and optional position. Include bullets describing each image.',
+      video:
+        'MUST provide video object with url, type (youtube/vimeo/mp4/webm), optional title, poster, autoplay, and controls. Include bullets describing video content and key takeaways.',
+      code: 'MUST provide code object with language, code content, optional title, and lineNumbers. Include bullets explaining the code and its significance.',
+      faq: 'MUST provide faq array with question and answer pairs. Format: [{question: "Frequent question", answer: "Detailed answer (30-50 words)"}]',
+      testimonial:
+        'MUST provide testimonials array with quote, author, optional title, company, and avatar. Format: [{quote: "Customer quote", author: "Name", title: "Position", company: "Company", avatar: "url"}]',
+      pricing:
+        'MUST provide pricing array with name, price, period, features, highlighted, and buttonText. Format: [{name: "Plan Name", price: "$99", period: "/month", features: ["Feature 1", "Feature 2"], highlighted: true, buttonText: "Get Started"}]',
     };
 
-    const layoutGuide = layoutInstructions[plan.layout] || 'Provide 5-7 clear bullet points starting with bold lead-in headers: "**Header**: Thorough, in-depth explanation (30-50 words)".';
-    
+    const layoutGuide =
+      layoutInstructions[plan.layout] ||
+      'Provide 5-7 clear bullet points starting with bold lead-in headers: "**Header**: Thorough, in-depth explanation (30-50 words)".';
+
     // Get concrete example for visual layouts
     const example = this.getLayoutExample(plan.layout);
 
@@ -362,18 +426,18 @@ Formatting & Quality Rules:
 
   private getLayoutSpecificFields(layout: SlideLayout): string {
     const fields: Record<string, string> = {
-      'chart': ', "chart": {type, data, title, labels, colors}',
-      'table': ', "table": {headers: [], rows: []}',
-      'timeline': ', "timeline": [{date, title, description, icon}]',
-      'flowchart': ', "flowchart": {nodes: [], edges: [], direction}',
-      'infographic': ', "infographic": [{type, content, position, style}]',
-      'stats': ', "stats": [{value, label, icon, color}]',
+      chart: ', "chart": {type, data, title, labels, colors}',
+      table: ', "table": {headers: [], rows: []}',
+      timeline: ', "timeline": [{date, title, description, icon}]',
+      flowchart: ', "flowchart": {nodes: [], edges: [], direction}',
+      infographic: ', "infographic": [{type, content, position, style}]',
+      stats: ', "stats": [{value, label, icon, color}]',
       'image-grid': ', "imageGrid": [{url, base64, alt, position}]',
-      'video': ', "video": {url, type, title, poster, autoplay, controls}',
-      'code': ', "code": {language, code, title, lineNumbers}',
-      'faq': ', "faq": [{question, answer}]',
-      'testimonial': ', "testimonials": [{quote, author, title, company, avatar}]',
-      'pricing': ', "pricing": [{name, price, period, features, highlighted, buttonText}]',
+      video: ', "video": {url, type, title, poster, autoplay, controls}',
+      code: ', "code": {language, code, title, lineNumbers}',
+      faq: ', "faq": [{question, answer}]',
+      testimonial: ', "testimonials": [{quote, author, title, company, avatar}]',
+      pricing: ', "pricing": [{name, price, period, features, highlighted, buttonText}]',
     };
     return fields[layout] || '';
   }
@@ -383,7 +447,7 @@ Formatting & Quality Rules:
    */
   private getLayoutExample(layout: SlideLayout): string {
     const examples: Record<string, string> = {
-      'chart': `
+      chart: `
 EXAMPLE OUTPUT for chart layout:
 {
   "title": "Revenue Analysis",
@@ -405,7 +469,7 @@ EXAMPLE OUTPUT for chart layout:
     "**Peak Performance**: Q4 achieved highest revenue at $95M, exceeding targets by 15%"
   ]
 }`,
-      'stats': `
+      stats: `
 EXAMPLE OUTPUT for stats layout:
 {
   "title": "Key Performance Metrics",
@@ -420,7 +484,7 @@ EXAMPLE OUTPUT for stats layout:
     "**Performance**: Average response time under 100ms ensures optimal user experience"
   ]
 }`,
-      'timeline': `
+      timeline: `
 EXAMPLE OUTPUT for timeline layout:
 {
   "title": "Project Roadmap",
@@ -435,7 +499,7 @@ EXAMPLE OUTPUT for timeline layout:
     "**Phase 3-4**: Launch successful, optimization ongoing with 45% performance improvement"
   ]
 }`,
-      'table': `
+      table: `
 EXAMPLE OUTPUT for table layout:
 {
   "title": "Technical Comparison",
@@ -452,7 +516,7 @@ EXAMPLE OUTPUT for table layout:
     "**Cost Efficiency**: 30% reduction in operational costs while improving reliability metrics"
   ]
 }`,
-      'flowchart': `
+      flowchart: `
 EXAMPLE OUTPUT for flowchart layout:
 {
   "title": "Process Flow",
@@ -481,7 +545,7 @@ EXAMPLE OUTPUT for flowchart layout:
   ]
 }`,
     };
-    
+
     return examples[layout] || '';
   }
 
@@ -495,15 +559,15 @@ EXAMPLE OUTPUT for flowchart layout:
           // Circuit open: try fallback model directly
           log.info('Circuit open, trying fallback model directly');
           return this.executeLLMRequest(prompt, this.config.fallbackModel, onStreamChunk);
-        }
-      )
+        },
+      ),
     );
   }
 
   private async executeLLMRequest(
     prompt: string,
     overrideModel?: string,
-    onStreamChunk?: (chunk: string) => void
+    onStreamChunk?: (chunk: string) => void,
   ): Promise<string> {
     const url = `${this.config.baseUrl}/v1/chat/completions`;
     const model = overrideModel || this.config.model;
@@ -524,7 +588,7 @@ EXAMPLE OUTPUT for flowchart layout:
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Connection': 'keep-alive',
+          Connection: 'keep-alive',
           'Keep-Alive': 'timeout=60, max=1000',
           ...(this.config.apiKey ? { Authorization: `Bearer ${this.config.apiKey}` } : {}),
         },
@@ -553,7 +617,7 @@ EXAMPLE OUTPUT for flowchart layout:
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Connection': 'keep-alive',
+            Connection: 'keep-alive',
             'Keep-Alive': 'timeout=60, max=1000',
             ...(this.config.apiKey ? { Authorization: `Bearer ${this.config.apiKey}` } : {}),
           },
@@ -562,7 +626,9 @@ EXAMPLE OUTPUT for flowchart layout:
 
         if (!fallbackResponse.ok) {
           const fbBody = await fallbackResponse.text().catch(() => 'no body');
-          throw new Error(`Both models failed. Primary: ${response.status}, Fallback: ${fallbackResponse.status} - ${fbBody}`);
+          throw new Error(
+            `Both models failed. Primary: ${response.status}, Fallback: ${fallbackResponse.status} - ${fbBody}`,
+          );
         }
 
         return await this.extractContent(fallbackResponse, onStreamChunk);
@@ -579,7 +645,10 @@ EXAMPLE OUTPUT for flowchart layout:
    * Extract content from LLM response.
    * Handles both JSON responses and SSE stream format.
    */
-  private async extractContent(response: any, onStreamChunk?: (chunk: string) => void): Promise<string> {
+  private async extractContent(
+    response: any,
+    onStreamChunk?: (chunk: string) => void,
+  ): Promise<string> {
     const text = await response.text();
 
     // Try standard JSON first
@@ -644,11 +713,14 @@ EXAMPLE OUTPUT for flowchart layout:
       if (jsonMatch) {
         const parsed = JSON.parse(jsonMatch[0]);
         const cleanTitle = SlideExporter.cleanMarkdownText(parsed.title || plan.title || '');
-        const cleanSubtitle = SlideExporter.cleanMarkdownText(parsed.subtitle || plan.subtitle || '');
+        const cleanSubtitle = SlideExporter.cleanMarkdownText(
+          parsed.subtitle || plan.subtitle || '',
+        );
 
-        let rawBullets: string[] = Array.isArray(parsed.bullets) && parsed.bullets.length > 0
-          ? parsed.bullets
-          : plan.bullets;
+        const rawBullets: string[] =
+          Array.isArray(parsed.bullets) && parsed.bullets.length > 0
+            ? parsed.bullets
+            : plan.bullets;
 
         const cleanedBullets = SlideExporter.sanitizeBullets(rawBullets, cleanTitle);
 
@@ -707,7 +779,9 @@ EXAMPLE OUTPUT for flowchart layout:
         return slideContent;
       }
     } catch (e) {
-      log.warn('Failed to parse LLM response as JSON', { error: e instanceof Error ? e.message : String(e) });
+      log.warn('Failed to parse LLM response as JSON', {
+        error: e instanceof Error ? e.message : String(e),
+      });
     }
 
     return this.generateTemplateContent(plan);
@@ -851,16 +925,22 @@ EXAMPLE OUTPUT for flowchart layout:
       if (arrayJson) {
         const parsed = JSON.parse(arrayJson);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed.filter((item: any) => item && typeof item === 'object')
+          return parsed
+            .filter((item: any) => item && typeof item === 'object')
             .map((item: any) => {
-              const title = SlideExporter.cleanMarkdownText(item.title || item.slide_title || 'Untitled Slide');
+              const title = SlideExporter.cleanMarkdownText(
+                item.title || item.slide_title || 'Untitled Slide',
+              );
               return {
                 title,
                 layout: item.layout || 'title-bullets',
                 bullets: SlideExporter.sanitizeBullets(
-                  Array.isArray(item.bullets) ? item.bullets :
-                    Array.isArray(item.points) ? item.points : [],
-                  title
+                  Array.isArray(item.bullets)
+                    ? item.bullets
+                    : Array.isArray(item.points)
+                      ? item.points
+                      : [],
+                  title,
                 ),
                 subtitle: SlideExporter.cleanMarkdownText(item.subtitle || ''),
               };
@@ -874,20 +954,28 @@ EXAMPLE OUTPUT for flowchart layout:
         const parsed = JSON.parse(objectJson);
         if (parsed && typeof parsed === 'object' && (parsed.title || parsed.slide_title)) {
           const title = SlideExporter.cleanMarkdownText(parsed.title || parsed.slide_title);
-          return [{
-            title,
-            layout: parsed.layout || 'title-bullets',
-            bullets: SlideExporter.sanitizeBullets(
-              Array.isArray(parsed.bullets) ? parsed.bullets :
-                Array.isArray(parsed.points) ? parsed.points : [],
-              title
-            ),
-            subtitle: SlideExporter.cleanMarkdownText(parsed.subtitle || ''),
-          }];
+          return [
+            {
+              title,
+              layout: parsed.layout || 'title-bullets',
+              bullets: SlideExporter.sanitizeBullets(
+                Array.isArray(parsed.bullets)
+                  ? parsed.bullets
+                  : Array.isArray(parsed.points)
+                    ? parsed.points
+                    : [],
+                title,
+              ),
+              subtitle: SlideExporter.cleanMarkdownText(parsed.subtitle || ''),
+            },
+          ];
         }
       }
     } catch (e) {
-      log.warn('Failed to parse outline response', { error: e instanceof Error ? e.message : String(e), responsePreview: response.substring(0, 300) });
+      log.warn('Failed to parse outline response', {
+        error: e instanceof Error ? e.message : String(e),
+        responsePreview: response.substring(0, 300),
+      });
     }
 
     return [];
@@ -918,14 +1006,25 @@ EXAMPLE OUTPUT for flowchart layout:
   /** Guarantee data-driven and visual slides without changing title slides. */
   private ensureOutlineVisualVariety(plans: SlidePlan[]): SlidePlan[] {
     if (plans.length < 6) return plans;
-    const result = plans.map(plan => ({ ...plan }));
-    const desired: SlideLayout[] = ['stats', 'image-grid', 'table', 'flowchart', 'chart', 'timeline'];
+    const result = plans.map((plan) => ({ ...plan }));
+    const desired: SlideLayout[] = [
+      'stats',
+      'image-grid',
+      'table',
+      'flowchart',
+      'chart',
+      'timeline',
+    ];
     const candidates = result
       .map((plan, index) => ({ plan, index }))
-      .filter(({ plan, index }) => index > 0 && plan.layout !== 'title' && plan.layout !== 'section-break');
+      .filter(
+        ({ plan, index }) =>
+          index > 0 && plan.layout !== 'title' && plan.layout !== 'section-break',
+      );
 
     desired.forEach((layout, slot) => {
-      const candidate = candidates[Math.floor((slot + 1) * candidates.length / (desired.length + 1))];
+      const candidate =
+        candidates[Math.floor(((slot + 1) * candidates.length) / (desired.length + 1))];
       if (candidate) candidate.plan.layout = layout;
     });
     return result;
@@ -952,9 +1051,8 @@ EXAMPLE OUTPUT for flowchart layout:
    * Plan bullets come from outline LLM call or chunk extraction.
    */
   private generateEnhancedFallback(plan: SlidePlan): SlideContent {
-    const rawBullets = plan.bullets.length > 0
-      ? plan.bullets.slice(0, 7)
-      : this.generateFallbackBullets(plan.title);
+    const rawBullets =
+      plan.bullets.length > 0 ? plan.bullets.slice(0, 7) : this.generateFallbackBullets(plan.title);
 
     const bullets = SlideExporter.sanitizeBullets(rawBullets, plan.title);
 
@@ -973,7 +1071,8 @@ EXAMPLE OUTPUT for flowchart layout:
   }
 
   private generateTemplateContent(plan: SlidePlan): SlideContent {
-    const rawBullets = plan.bullets.length > 0 ? plan.bullets : this.generateFallbackBullets(plan.title);
+    const rawBullets =
+      plan.bullets.length > 0 ? plan.bullets : this.generateFallbackBullets(plan.title);
     const bullets = SlideExporter.sanitizeBullets(rawBullets, plan.title);
 
     const content: SlideContent = {
@@ -995,9 +1094,21 @@ EXAMPLE OUTPUT for flowchart layout:
    * If LLM didn't provide the required visual data structure, inject fallback data
    */
   private ensureVisualData(content: SlideContent, layout: SlideLayout, title: string): void {
-    const visualLayouts = ['chart', 'table', 'timeline', 'flowchart', 'infographic', 'stats', 
-                           'image-grid', 'video', 'code', 'faq', 'testimonial', 'pricing'];
-    
+    const visualLayouts = [
+      'chart',
+      'table',
+      'timeline',
+      'flowchart',
+      'infographic',
+      'stats',
+      'image-grid',
+      'video',
+      'code',
+      'faq',
+      'testimonial',
+      'pricing',
+    ];
+
     if (!visualLayouts.includes(layout)) {
       return; // Not a visual layout, skip
     }
@@ -1007,13 +1118,21 @@ EXAMPLE OUTPUT for flowchart layout:
     // Check if visual data is missing for the specific layout
     switch (layout) {
       case 'chart':
-        if (!(content as any).chart || !(content as any).chart.data || (content as any).chart.data.length === 0) {
+        if (
+          !(content as any).chart ||
+          !(content as any).chart.data ||
+          (content as any).chart.data.length === 0
+        ) {
           needsFallback = true;
           log.warn(`Chart layout missing chart data for slide "${title}", injecting fallback`);
         }
         break;
       case 'table':
-        if (!(content as any).table || !(content as any).table.rows || (content as any).table.rows.length === 0) {
+        if (
+          !(content as any).table ||
+          !(content as any).table.rows ||
+          (content as any).table.rows.length === 0
+        ) {
           needsFallback = true;
           log.warn(`Table layout missing table data for slide "${title}", injecting fallback`);
         }
@@ -1021,19 +1140,29 @@ EXAMPLE OUTPUT for flowchart layout:
       case 'timeline':
         if (!content.timeline || content.timeline.length === 0) {
           needsFallback = true;
-          log.warn(`Timeline layout missing timeline data for slide "${title}", injecting fallback`);
+          log.warn(
+            `Timeline layout missing timeline data for slide "${title}", injecting fallback`,
+          );
         }
         break;
       case 'flowchart':
-        if (!content.flowchart || !content.flowchart.nodes || content.flowchart.nodes.length === 0) {
+        if (
+          !content.flowchart ||
+          !content.flowchart.nodes ||
+          content.flowchart.nodes.length === 0
+        ) {
           needsFallback = true;
-          log.warn(`Flowchart layout missing flowchart data for slide "${title}", injecting fallback`);
+          log.warn(
+            `Flowchart layout missing flowchart data for slide "${title}", injecting fallback`,
+          );
         }
         break;
       case 'infographic':
         if (!content.infographic || content.infographic.length === 0) {
           needsFallback = true;
-          log.warn(`Infographic layout missing infographic data for slide "${title}", injecting fallback`);
+          log.warn(
+            `Infographic layout missing infographic data for slide "${title}", injecting fallback`,
+          );
         }
         break;
       case 'stats':
@@ -1045,7 +1174,9 @@ EXAMPLE OUTPUT for flowchart layout:
       case 'image-grid':
         if (!content.imageGrid || content.imageGrid.length === 0) {
           needsFallback = true;
-          log.warn(`Image-grid layout missing imageGrid data for slide "${title}", injecting fallback`);
+          log.warn(
+            `Image-grid layout missing imageGrid data for slide "${title}", injecting fallback`,
+          );
         }
         break;
       case 'video':
@@ -1069,7 +1200,9 @@ EXAMPLE OUTPUT for flowchart layout:
       case 'testimonial':
         if (!content.testimonials || content.testimonials.length === 0) {
           needsFallback = true;
-          log.warn(`Testimonial layout missing testimonials data for slide "${title}", injecting fallback`);
+          log.warn(
+            `Testimonial layout missing testimonials data for slide "${title}", injecting fallback`,
+          );
         }
         break;
       case 'pricing':
@@ -1094,10 +1227,10 @@ EXAMPLE OUTPUT for flowchart layout:
     let hash = 0;
     for (let i = 0; i < title.length; i++) {
       const chr = title.charCodeAt(i);
-      hash = ((hash << 5) - hash) + chr;
+      hash = (hash << 5) - hash + chr;
       hash |= 0; // Convert to 32bit integer
     }
-    return ((Math.abs(hash) * 13 + 7) % 100);
+    return (Math.abs(hash) * 13 + 7) % 100;
   }
 
   /**
@@ -1132,14 +1265,24 @@ EXAMPLE OUTPUT for flowchart layout:
   /**
    * Pick a chart type based on title keywords and seed.
    */
-  private pickChartType(title: string, seed: number): 'bar' | 'line' | 'pie' | 'area' | 'doughnut' | 'radar' | 'scatter' {
+  private pickChartType(
+    title: string,
+    seed: number,
+  ): 'bar' | 'line' | 'pie' | 'area' | 'doughnut' | 'radar' | 'scatter' {
     if (/trend|growth|progress|increase|tăng|phát triển|growth rate/i.test(title)) return 'line';
     if (/distribution|share|split|phân bổ|tỷ lệ|composition/i.test(title)) return 'pie';
     if (/compare|comparison|so sánh|đối chiếu|versus|vs/i.test(title)) return 'bar';
     if (/over time|history|history|timeline|progress|theo thời gian/i.test(title)) return 'area';
     if (/radar|skill|competency|assessment|kỹ năng|đánh giá/i.test(title)) return 'radar';
     if (/breakdown|revenue|sales|doanh thu|budget|ngân sách/i.test(title)) return 'doughnut';
-    const types: ('bar' | 'line' | 'pie' | 'area' | 'doughnut' | 'radar' | 'scatter')[] = ['bar', 'bar', 'line', 'pie', 'area', 'doughnut'];
+    const types: ('bar' | 'line' | 'pie' | 'area' | 'doughnut' | 'radar' | 'scatter')[] = [
+      'bar',
+      'bar',
+      'line',
+      'pie',
+      'area',
+      'doughnut',
+    ];
     return types[seed % types.length];
   }
 
@@ -1148,7 +1291,8 @@ EXAMPLE OUTPUT for flowchart layout:
    * Data varies based on the slide title to avoid every fallback looking identical.
    */
   private addLayoutFallbackData(content: SlideContent, layout: SlideLayout, title: string): void {
-    const isVietnamese = /[àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ]/i.test(title);
+    const isVietnamese =
+      /[àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ]/i.test(title);
     const seed = this.seedFromTitle(title);
     const val = this.generateChartValues(seed);
 
@@ -1161,24 +1305,32 @@ EXAMPLE OUTPUT for flowchart layout:
             { label: isVietnamese ? 'Q.2' : 'Q2', value: val[1], target: val[1] - 8 },
             { label: isVietnamese ? 'Q.3' : 'Q3', value: val[2], target: val[2] - 12 },
             { label: isVietnamese ? 'Q.4' : 'Q4', value: val[3], target: val[3] - 5 },
-            { label: isVietnamese ? 'C.Năm' : 'Year', value: val.reduce((a, b) => a + b) / 4, target: val.reduce((a, b) => a + b) / 5 },
+            {
+              label: isVietnamese ? 'C.Năm' : 'Year',
+              value: val.reduce((a, b) => a + b) / 4,
+              target: val.reduce((a, b) => a + b) / 5,
+            },
           ],
           title: title.substring(0, 50),
-          labels: [isVietnamese ? 'Q.1' : 'Q1', isVietnamese ? 'Q.2' : 'Q2', isVietnamese ? 'Q.3' : 'Q3', isVietnamese ? 'Q.4' : 'Q4', isVietnamese ? 'Tổng' : 'Total'],
+          labels: [
+            isVietnamese ? 'Q.1' : 'Q1',
+            isVietnamese ? 'Q.2' : 'Q2',
+            isVietnamese ? 'Q.3' : 'Q3',
+            isVietnamese ? 'Q.4' : 'Q4',
+            isVietnamese ? 'Tổng' : 'Total',
+          ],
           colors: ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'],
         };
         break;
 
       case 'table':
         (content as any).table = {
-          headers: isVietnamese
-            ? ['STT', 'Tiêu chí', 'Giá trị']
-            : ['No.', 'Criteria', 'Value'],
+          headers: isVietnamese ? ['STT', 'Tiêu chí', 'Giá trị'] : ['No.', 'Criteria', 'Value'],
           rows: [
-            ['1', isVietnamese ? 'Chỉ số A' : `Metric ${seed % 20 + 1}`, `${val[0]}%`],
-            ['2', isVietnamese ? 'Chỉ số B' : `Metric ${seed % 20 + 2}`, `${val[1]}%`],
-            ['3', isVietnamese ? 'Chỉ số C' : `Metric ${seed % 20 + 3}`, `${val[2]}%`],
-            ['4', isVietnamese ? 'Chỉ số D' : `Metric ${seed % 20 + 4}`, `${val[3]}%`],
+            ['1', isVietnamese ? 'Chỉ số A' : `Metric ${(seed % 20) + 1}`, `${val[0]}%`],
+            ['2', isVietnamese ? 'Chỉ số B' : `Metric ${(seed % 20) + 2}`, `${val[1]}%`],
+            ['3', isVietnamese ? 'Chỉ số C' : `Metric ${(seed % 20) + 3}`, `${val[2]}%`],
+            ['4', isVietnamese ? 'Chỉ số D' : `Metric ${(seed % 20) + 4}`, `${val[3]}%`],
           ],
           title: title.substring(0, 50),
         };
@@ -1188,26 +1340,35 @@ EXAMPLE OUTPUT for flowchart layout:
         content.timeline = [
           {
             date: `${2023 + Math.floor(seed / 25)}-0${(seed % 3) + 1}`,
-            title: isVietnamese ? `Giai đoạn ${seed % 4 + 1}` : `Phase ${seed % 4 + 1}`,
-            description: title.length > 20 ? `${title.substring(0, 40)} — initial phase` : 'Initial research and planning phase',
+            title: isVietnamese ? `Giai đoạn ${(seed % 4) + 1}` : `Phase ${(seed % 4) + 1}`,
+            description:
+              title.length > 20
+                ? `${title.substring(0, 40)} — initial phase`
+                : 'Initial research and planning phase',
             icon: 'calendar',
           },
           {
             date: `${2023 + Math.floor(seed / 25)}-0${(seed % 3) + 4}`,
-            title: isVietnamese ? `Phát triển ${seed % 4 + 1}` : `Development ${seed % 4 + 1}`,
-            description: isVietnamese ? 'Xây dựng và phát triển các tính năng cốt lõi' : 'Building and developing core features',
+            title: isVietnamese ? `Phát triển ${(seed % 4) + 1}` : `Development ${(seed % 4) + 1}`,
+            description: isVietnamese
+              ? 'Xây dựng và phát triển các tính năng cốt lõi'
+              : 'Building and developing core features',
             icon: 'code',
           },
           {
             date: `${2023 + Math.floor(seed / 25)}-0${(seed % 3) + 7}`,
-            title: isVietnamese ? `Triển khai ${seed % 4 + 1}` : `Launch ${seed % 4 + 1}`,
-            description: isVietnamese ? 'Ra mắt và triển khai tới người dùng' : 'Official launch and user rollout',
+            title: isVietnamese ? `Triển khai ${(seed % 4) + 1}` : `Launch ${(seed % 4) + 1}`,
+            description: isVietnamese
+              ? 'Ra mắt và triển khai tới người dùng'
+              : 'Official launch and user rollout',
             icon: 'rocket',
           },
           {
-            date: `${2023 + Math.floor(seed / 25)}-1${(seed % 3)}`,
-            title: isVietnamese ? `Tối ưu ${seed % 4 + 1}` : `Optimization ${seed % 4 + 1}`,
-            description: isVietnamese ? `Tối ưu hóa dựa trên ${isVietnamese ? 'phản hồi' : 'feedback'} và phân tích dữ liệu` : 'Performance optimization and data-driven improvements',
+            date: `${2023 + Math.floor(seed / 25)}-1${seed % 3}`,
+            title: isVietnamese ? `Tối ưu ${(seed % 4) + 1}` : `Optimization ${(seed % 4) + 1}`,
+            description: isVietnamese
+              ? `Tối ưu hóa dựa trên ${isVietnamese ? 'phản hồi' : 'feedback'} và phân tích dữ liệu`
+              : 'Performance optimization and data-driven improvements',
             icon: 'trending-up',
           },
         ];
@@ -1246,23 +1407,40 @@ EXAMPLE OUTPUT for flowchart layout:
             type: 'stat',
             content: `${val[0]}%`,
             position: { x: 10, y: 15, width: 25, height: 20 },
-            style: { fontSize: 18, fontWeight: 'bold', color: '#3B82F6', backgroundColor: '#EFF6FF' },
+            style: {
+              fontSize: 18,
+              fontWeight: 'bold',
+              color: '#3B82F6',
+              backgroundColor: '#EFF6FF',
+            },
           },
           {
             type: 'stat',
             content: `${val[1]}%`,
             position: { x: 40, y: 15, width: 25, height: 20 },
-            style: { fontSize: 18, fontWeight: 'bold', color: '#10B981', backgroundColor: '#ECFDF5' },
+            style: {
+              fontSize: 18,
+              fontWeight: 'bold',
+              color: '#10B981',
+              backgroundColor: '#ECFDF5',
+            },
           },
           {
             type: 'stat',
             content: `${val[2]}%`,
             position: { x: 70, y: 15, width: 25, height: 20 },
-            style: { fontSize: 18, fontWeight: 'bold', color: '#F59E0B', backgroundColor: '#FFEDD5' },
+            style: {
+              fontSize: 18,
+              fontWeight: 'bold',
+              color: '#F59E0B',
+              backgroundColor: '#FFEDD5',
+            },
           },
           {
             type: 'text',
-            content: isVietnamese ? 'Tăng trưởng và hiệu suất theo thời gian' : 'Growth and performance over time',
+            content: isVietnamese
+              ? 'Tăng trưởng và hiệu suất theo thời gian'
+              : 'Growth and performance over time',
             position: { x: 0, y: 40, width: 100, height: 8 },
             style: { fontSize: 14, color: '#6B7280' },
           },
@@ -1353,16 +1531,26 @@ console.log(result); // 15`,
       case 'faq':
         content.faq = [
           {
-            question: isVietnamese ? 'Câu hỏi 1: Làm thế nào để bắt đầu?' : 'Q1: How do I get started?',
-            answer: isVietnamese ? 'Bạn có thể bắt đầu bằng cách đăng ký tài khoản và làm theo hướng dẫn.' : 'You can start by creating an account and following the onboarding tutorial.',
+            question: isVietnamese
+              ? 'Câu hỏi 1: Làm thế nào để bắt đầu?'
+              : 'Q1: How do I get started?',
+            answer: isVietnamese
+              ? 'Bạn có thể bắt đầu bằng cách đăng ký tài khoản và làm theo hướng dẫn.'
+              : 'You can start by creating an account and following the onboarding tutorial.',
           },
           {
             question: isVietnamese ? 'Câu hỏi 2: Chi phí như thế nào?' : 'Q2: What are the costs?',
-            answer: isVietnamese ? 'Chúng tôi có nhiều gói khác nhau phù hợp với nhu cầu của bạn.' : 'We offer various pricing plans to suit your needs.',
+            answer: isVietnamese
+              ? 'Chúng tôi có nhiều gói khác nhau phù hợp với nhu cầu của bạn.'
+              : 'We offer various pricing plans to suit your needs.',
           },
           {
-            question: isVietnamese ? 'Câu hỏi 3: Có hỗ trợ kỹ thuật không?' : 'Q3: Is technical support available?',
-            answer: isVietnamese ? 'Đội ngũ hỗ trợ của chúng tôi sẵn sàng giúp đỡ 24/7.' : 'Our support team is available 24/7 to assist you.',
+            question: isVietnamese
+              ? 'Câu hỏi 3: Có hỗ trợ kỹ thuật không?'
+              : 'Q3: Is technical support available?',
+            answer: isVietnamese
+              ? 'Đội ngũ hỗ trợ của chúng tôi sẵn sàng giúp đỡ 24/7.'
+              : 'Our support team is available 24/7 to assist you.',
           },
         ];
         break;
@@ -1370,14 +1558,18 @@ console.log(result); // 15`,
       case 'testimonial':
         content.testimonials = [
           {
-            quote: isVietnamese ? 'Sản phẩm tuyệt vời! Đã thay đổi hoàn toàn quy trình làm việc của chúng tôi.' : 'Great product! It has completely transformed our workflow.',
+            quote: isVietnamese
+              ? 'Sản phẩm tuyệt vời! Đã thay đổi hoàn toàn quy trình làm việc của chúng tôi.'
+              : 'Great product! It has completely transformed our workflow.',
             author: isVietnamese ? 'Nguyễn Văn A' : 'John Doe',
             title: isVietnamese ? 'Giám đốc kỹ thuật' : 'CTO',
             company: isVietnamese ? 'Công ty XYZ' : 'XYZ Corp',
             avatar: 'https://via.placeholder.com/100x100/3B82F6/FFFFFF?text=NA',
           },
           {
-            quote: isVietnamese ? 'Dịch vụ khách hàng xuất sắc. Luôn nhận được sự hỗ trợ kịp thời.' : 'Excellent customer service. Always receive timely support.',
+            quote: isVietnamese
+              ? 'Dịch vụ khách hàng xuất sắc. Luôn nhận được sự hỗ trợ kịp thời.'
+              : 'Excellent customer service. Always receive timely support.',
             author: isVietnamese ? 'Trần Thị B' : 'Jane Smith',
             title: isVietnamese ? 'Quản lý dự án' : 'Project Manager',
             company: isVietnamese ? 'Công ty ABC' : 'ABC Inc',
@@ -1439,8 +1631,11 @@ console.log(result); // 15`,
   }
 
   private createVisualCardDataUri(text: string, color: string, index: string): string {
-    const label = SlideExporter.cleanMarkdownText(text).slice(0, 46)
-      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const label = SlideExporter.cleanMarkdownText(text)
+      .slice(0, 46)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
     const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="800" height="520"><rect width="800" height="520" rx="32" fill="${color}"/><circle cx="690" cy="95" r="130" fill="#fff" opacity=".12"/><text x="58" y="100" fill="#fff" opacity=".7" font-family="Arial" font-size="34">${index}</text><text x="58" y="250" fill="#fff" font-family="Arial" font-size="42" font-weight="700">${label}</text><path d="M58 330h420" stroke="#fff" stroke-width="8" opacity=".45"/><path d="M58 370h300" stroke="#fff" stroke-width="8" opacity=".25"/></svg>`;
     return `data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}`;
   }

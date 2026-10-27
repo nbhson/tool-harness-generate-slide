@@ -1,7 +1,7 @@
-import { ContentGenerator, SlidePlan } from '../harness/tools/contentGenerator';
-import { ContextManager } from '../harness/context/contextManager';
-import { InputGuardrails } from '../harness/guardrails/inputGuardrails';
-import { WorkingMemory } from '../harness/memory/workingMemory';
+import type { ContentGenerator, SlidePlan } from '../harness/tools/contentGenerator';
+import type { ContextManager } from '../harness/context/contextManager';
+import type { InputGuardrails } from '../harness/guardrails/inputGuardrails';
+import type { WorkingMemory } from '../harness/memory/workingMemory';
 import { logger } from '../utils/logger';
 
 const log = logger.child('PlannerAgent');
@@ -22,7 +22,7 @@ export class PlannerAgent {
     contentGenerator: ContentGenerator,
     contextManager: ContextManager,
     inputGuardrails: InputGuardrails,
-    workingMemory: WorkingMemory
+    workingMemory: WorkingMemory,
   ) {
     this.contentGenerator = contentGenerator;
     this.contextManager = contextManager;
@@ -30,7 +30,12 @@ export class PlannerAgent {
     this.workingMemory = workingMemory;
   }
 
-  async plan(input: { topic: string; outline?: string[]; language?: string; maxSlides?: number }): Promise<PlannerResult> {
+  async plan(input: {
+    topic: string;
+    outline?: string[];
+    language?: string;
+    maxSlides?: number;
+  }): Promise<PlannerResult> {
     log.info('Planning presentation...', { topic: input.topic });
 
     // Step 1: Validate input
@@ -43,14 +48,11 @@ export class PlannerAgent {
       };
     }
 
-    // Step 2: Build context
-    const context = this.contextManager.buildPlannerContext(input);
-
-    // Step 3: Generate outline via LLM
+    // Step 2: Generate outline via LLM (contextManager reserved for richer prompts)
     const outline = await this.contentGenerator.generateOutline(
       input.topic,
       input.outline,
-      input.maxSlides
+      input.maxSlides,
     );
 
     if (outline.length === 0) {

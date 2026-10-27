@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { CircuitBreaker } from '../circuitBreaker';
 
 describe('CircuitBreaker', () => {
@@ -40,7 +40,11 @@ describe('CircuitBreaker', () => {
 
   it('should transition to half-open after timeout and recover on success', async () => {
     vi.useFakeTimers();
-    const cb = new CircuitBreaker('test', { failureThreshold: 1, resetTimeoutMs: 500, halfOpenSuccessThreshold: 1 });
+    const cb = new CircuitBreaker('test', {
+      failureThreshold: 1,
+      resetTimeoutMs: 500,
+      halfOpenSuccessThreshold: 1,
+    });
     const primaryFail = vi.fn().mockRejectedValue(new Error('fail'));
     const fallback = vi.fn().mockResolvedValue('fallback');
 

@@ -17,15 +17,15 @@ export interface WorkerTaskResponse {
 
 /**
  * Worker Pool for CPU-bound tasks.
- * 
+ *
  * Uses Node.js worker_threads to offload heavy tasks:
  * - PPTX generation (pptxgenjs serialize/render)
  * - Large JSON parsing
  * - Text chunking on large documents
- * 
+ *
  * Note: Node.js worker_threads are most useful for CPU-bound tasks.
  * I/O-bound tasks (LLM API calls) are better handled with async/promises.
- * 
+ *
  * Usage:
  *   const pool = new WorkerPool();
  *   const result = await pool.run({ type: 'export-pptx', data: { slides, theme } });
@@ -100,10 +100,11 @@ export class WorkerPool {
         return this.runPPTXExport(task.data) as T;
       case 'parse-json':
         return JSON.parse(task.data) as T;
-      case 'chunk-text':
+      case 'chunk-text': {
         const { TextChunker } = require('./textChunker');
         const chunker = new TextChunker();
         return chunker.chunk(task.data) as T;
+      }
       default:
         throw new Error(`Unknown task type: ${task.type}`);
     }

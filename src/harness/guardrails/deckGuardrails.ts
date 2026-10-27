@@ -1,5 +1,4 @@
-import { Presentation } from '../../schemas/presentation.schema';
-import { Slide } from '../../schemas/slide.schema';
+import type { Presentation } from '../../schemas/presentation.schema';
 import { logger } from '../../utils/logger';
 
 export interface DeckGuardrailResult {
@@ -47,7 +46,9 @@ export class DeckGuardrails {
     }
 
     if (presentation.slides.length < this.config.minSlides) {
-      warnings.push(`Presentation has only ${presentation.slides.length} slides (recommended min: ${this.config.minSlides})`);
+      warnings.push(
+        `Presentation has only ${presentation.slides.length} slides (recommended min: ${this.config.minSlides})`,
+      );
     }
 
     // Coherence check
@@ -98,7 +99,7 @@ export class DeckGuardrails {
     if (lastSlide) {
       const lastTitle = (lastSlide.content.title || '').toLowerCase();
       const hasClosing = ['thank', 'summary', 'conclusion', 'cta', 'q&a', 'contact'].some(
-        (keyword) => lastTitle.includes(keyword)
+        (keyword) => lastTitle.includes(keyword),
       );
       if (!hasClosing) {
         warnings.push('Last slide typically should be a conclusion or thank-you slide');
@@ -108,7 +109,10 @@ export class DeckGuardrails {
     return { errors, warnings };
   }
 
-  private checkStyleConsistency(presentation: Presentation): { errors: string[]; warnings: string[] } {
+  private checkStyleConsistency(presentation: Presentation): {
+    errors: string[];
+    warnings: string[];
+  } {
     const errors: string[] = [];
     const warnings: string[] = [];
 
@@ -119,7 +123,9 @@ export class DeckGuardrails {
     // Check layout variety
     const layouts = new Set(presentation.slides.map((s) => s.content.layout));
     if (layouts.size === 1 && presentation.slides.length > 3) {
-      warnings.push('All slides use the same layout. Consider adding variety for better engagement.');
+      warnings.push(
+        'All slides use the same layout. Consider adding variety for better engagement.',
+      );
     }
 
     // Check for excessive text across slides
@@ -129,7 +135,9 @@ export class DeckGuardrails {
       }, 0) / presentation.slides.length;
 
     if (avgTextLength > 300) {
-      warnings.push('Average text content per slide is high. Consider reducing text for better readability.');
+      warnings.push(
+        'Average text content per slide is high. Consider reducing text for better readability.',
+      );
     }
 
     return { errors, warnings };

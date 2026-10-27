@@ -1,12 +1,12 @@
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { SlideExporter } from '../slideExporter';
-import { Presentation } from '../../../schemas/presentation.schema';
+import type { Presentation } from '../../../schemas/presentation.schema';
 import * as fs from 'fs';
 
 describe('Layout Overlap Integration', () => {
   it('should export a presentation with potential overlap cases and verify fixes', async () => {
     const exporter = new SlideExporter();
-    
+
     const mockPresentation: Presentation = {
       id: 'overlap-test',
       title: 'Overlap Test Presentation',
@@ -56,7 +56,7 @@ describe('Layout Overlap Integration', () => {
             bullets: [
               'Bullet point 1 that should not overlap with the chart',
               'Bullet point 2 that should be positioned below the chart',
-              'Bullet point 3 providing additional context'
+              'Bullet point 3 providing additional context',
             ],
             visuals: {
               chart: {
@@ -77,14 +77,16 @@ describe('Layout Overlap Integration', () => {
           id: 's2',
           index: 1,
           content: {
-            title: 'Very Long Title that might wrap and cause overlap with subtitles and content below it',
-            subtitle: 'This is a subtitle that should also be clear of the main title and the content that follows',
+            title:
+              'Very Long Title that might wrap and cause overlap with subtitles and content below it',
+            subtitle:
+              'This is a subtitle that should also be clear of the main title and the content that follows',
             layout: 'title',
             bullets: ['This is a bullet point on a title slide'],
           },
           isValid: true,
           validationErrors: [],
-        }
+        },
       ],
       theme: {
         name: 'modern',
@@ -121,7 +123,7 @@ describe('Layout Overlap Integration', () => {
 
     const outputPath = 'output/overlap-test.pptx';
     const resultPath = await exporter.exportPPTXDirect(mockPresentation, outputPath);
-    
+
     expect(fs.existsSync(resultPath)).toBe(true);
   });
 });

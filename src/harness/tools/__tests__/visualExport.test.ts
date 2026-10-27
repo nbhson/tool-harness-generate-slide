@@ -1,9 +1,8 @@
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { SlideExporter } from '../slideExporter';
 import { ContentGenerator } from '../contentGenerator';
-import { Presentation } from '../../../schemas/presentation.schema';
+import type { Presentation } from '../../../schemas/presentation.schema';
 import * as fs from 'fs';
-import * as path from 'path';
 
 describe('Visual Export Integration', () => {
   describe('ContentGenerator parsing', () => {
@@ -42,7 +41,7 @@ describe('Visual Export Integration', () => {
       // Create a long outline with 25 text slides
       const plans = Array.from({ length: 25 }, (_, i) => ({
         title: `Slide ${i + 1}`,
-        layout: i === 0 ? 'title' as const : 'title-bullets' as const,
+        layout: i === 0 ? ('title' as const) : ('title-bullets' as const),
         bullets: [`**Point**: Content for slide ${i + 1}`],
       }));
 
@@ -56,7 +55,7 @@ describe('Visual Export Integration', () => {
       expect(layouts).toContain('image-grid');
       expect(layouts).toContain('flowchart');
       expect(layouts).toContain('timeline');
-      
+
       // Title slide should remain unchanged
       expect(result[0].layout).toBe('title');
     });
@@ -65,7 +64,7 @@ describe('Visual Export Integration', () => {
   describe('SlideExporter chart series normalization', () => {
     it('should convert simple {label,value} data to PptxGenJS series format', () => {
       const exporter = new SlideExporter();
-      
+
       const chart = {
         type: 'bar',
         title: 'Performance Metrics',
@@ -86,7 +85,7 @@ describe('Visual Export Integration', () => {
 
     it('should handle multi-series data correctly', () => {
       const exporter = new SlideExporter();
-      
+
       const chart = {
         type: 'line',
         title: 'Multi-series',
@@ -108,7 +107,7 @@ describe('Visual Export Integration', () => {
 
     it('should pass through already-formatted PptxGenJS series data', () => {
       const exporter = new SlideExporter();
-      
+
       const chart = {
         type: 'bar',
         data: [
@@ -128,7 +127,7 @@ describe('Visual Export Integration', () => {
   describe('PPTX visual object export', () => {
     it('should export corporate presentation with chart, table, and image-grid layouts', async () => {
       const exporter = new SlideExporter();
-      
+
       const mockPresentation: Presentation = {
         id: 'visual-test',
         title: 'Visual Export Test',
@@ -184,11 +183,13 @@ describe('Visual Export Integration', () => {
               visuals: {
                 images: [
                   {
-                    base64: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4MDAiIGhlaWdodD0iNTIwIj48cmVjdCB3aWR0aD0iODAwIiBoZWlnaHQ9IjUyMCIgZmlsbD0iIzI1NjNFQiIvPjx0ZXh0IHg9IjQwMCIgeT0iMjYwIiBmaWxsPSIjZmZmIiBmb250LXNpemU9IjQ4IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5JbWFnZSAxPC90ZXh0Pjwvc3ZnPg==',
+                    base64:
+                      'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4MDAiIGhlaWdodD0iNTIwIj48cmVjdCB3aWR0aD0iODAwIiBoZWlnaHQ9IjUyMCIgZmlsbD0iIzI1NjNFQiIvPjx0ZXh0IHg9IjQwMCIgeT0iMjYwIiBmaWxsPSIjZmZmIiBmb250LXNpemU9IjQ4IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5JbWFnZSAxPC90ZXh0Pjwvc3ZnPg==',
                     alt: 'Image 1',
                   },
                   {
-                    base64: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4MDAiIGhlaWdodD0iNTIwIj48cmVjdCB3aWR0aD0iODAwIiBoZWlnaHQ9IjUyMCIgZmlsbD0iIzA1OTY2OSIvPjx0ZXh0IHg9IjQwMCIgeT0iMjYwIiBmaWxsPSIjZmZmIiBmb250LXNpemU9IjQ4IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5JbWFnZSAyPC90ZXh0Pjwvc3ZnPg==',
+                    base64:
+                      'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4MDAiIGhlaWdodD0iNTIwIj48cmVjdCB3aWR0aD0iODAwIiBoZWlnaHQ9IjUyMCIgZmlsbD0iIzA1OTY2OSIvPjx0ZXh0IHg9IjQwMCIgeT0iMjYwIiBmaWxsPSIjZmZmIiBmb250LXNpemU9IjQ4IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5JbWFnZSAyPC90ZXh0Pjwvc3ZnPg==',
                     alt: 'Image 2',
                   },
                 ],
@@ -233,7 +234,7 @@ describe('Visual Export Integration', () => {
 
       const outputPath = 'output/visual-test.pptx';
       const resultPath = await exporter.exportPPTXDirect(mockPresentation, outputPath);
-      
+
       expect(resultPath).toContain('visual-test.pptx');
       expect(fs.existsSync(resultPath)).toBe(true);
 

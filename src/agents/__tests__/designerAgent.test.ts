@@ -1,7 +1,7 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { DesignerAgent } from '../designerAgent';
-import { SlidePlan } from '../../harness/tools/contentGenerator';
-import { Slide } from '../../schemas/slide.schema';
+import type { SlidePlan } from '../../harness/tools/contentGenerator';
+import type { Slide } from '../../schemas/slide.schema';
 
 describe('DesignerAgent', () => {
   const mockContentGenerator = {
@@ -34,7 +34,7 @@ describe('DesignerAgent', () => {
       mockContextManager,
       mockSlideGuardrails,
       mockWorkingMemory,
-      { batchSize: 2 }
+      { batchSize: 2 },
     );
 
     const plans: SlidePlan[] = [
@@ -58,7 +58,7 @@ describe('DesignerAgent', () => {
       mockContextManager,
       mockSlideGuardrails,
       mockWorkingMemory,
-      { batchSize: 2 }
+      { batchSize: 2 },
     );
 
     const plans: SlidePlan[] = [
@@ -68,14 +68,34 @@ describe('DesignerAgent', () => {
     ];
 
     const existingSlides: Slide[] = [
-      { id: '1', index: 0, content: { title: 'Slide 1', bullets: ['b1'], layout: 'title' }, isValid: true, validationErrors: [] },
-      { id: '2', index: 1, content: { title: 'Old Failed', bullets: [], layout: 'title-bullets' }, isValid: false, validationErrors: ['err'] },
-      { id: '3', index: 2, content: { title: 'Slide 3', bullets: ['b3'], layout: 'title-bullets' }, isValid: true, validationErrors: [] },
+      {
+        id: '1',
+        index: 0,
+        content: { title: 'Slide 1', bullets: ['b1'], layout: 'title' },
+        isValid: true,
+        validationErrors: [],
+      },
+      {
+        id: '2',
+        index: 1,
+        content: { title: 'Old Failed', bullets: [], layout: 'title-bullets' },
+        isValid: false,
+        validationErrors: ['err'],
+      },
+      {
+        id: '3',
+        index: 2,
+        content: { title: 'Slide 3', bullets: ['b3'], layout: 'title-bullets' },
+        isValid: true,
+        validationErrors: [],
+      },
     ];
 
     mockContentGenerator.generateSlideContent.mockClear();
 
-    const redesignResult = await designer.redesignSlides(plans, [1], existingSlides, ['Fix layout']);
+    const redesignResult = await designer.redesignSlides(plans, [1], existingSlides, [
+      'Fix layout',
+    ]);
 
     expect(redesignResult.slides[0].content.title).toBe('Slide 1'); // Kept intact
     expect(redesignResult.slides[1].content.title).toBe('Slide 2 (Failed)'); // Redesigned

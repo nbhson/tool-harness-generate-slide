@@ -1,5 +1,5 @@
-import { Presentation, GeneratePresentationInput, GeneratePresentationOptions } from '../schemas/presentation.schema';
-import { Slide, SlideTheme } from '../schemas/slide.schema';
+import type { GeneratePresentationInput, Presentation } from '../schemas/presentation.schema';
+import type { SlideTheme } from '../schemas/slide.schema';
 import { InputGuardrails } from './guardrails/inputGuardrails';
 import { SlideGuardrails } from './guardrails/slideGuardrails';
 import { DeckGuardrails } from './guardrails/deckGuardrails';
@@ -137,20 +137,20 @@ export class SlideHarness {
       this.contentGenerator,
       this.contextManager,
       this.inputGuardrails,
-      this.workingMemory
+      this.workingMemory,
     );
 
     this.designerAgent = new DesignerAgent(
       this.contentGenerator,
       this.contextManager,
       this.slideGuardrails,
-      this.workingMemory
+      this.workingMemory,
     );
 
     this.evaluatorAgent = new EvaluatorAgent(
       this.deckGuardrails,
       this.slideGuardrails,
-      this.feedbackLoop
+      this.feedbackLoop,
     );
 
     log.info('SlideHarness initialized', {
@@ -243,7 +243,7 @@ export class SlideHarness {
           planResult.slides,
           failedIndices,
           presentation.slides,
-          evalResult.feedback
+          evalResult.feedback,
         );
         presentation.slides = redesigned.slides;
       }
@@ -285,7 +285,10 @@ export class SlideHarness {
    * Phase 13: Generate + Export in a single pipeline.
    * Starts PPTX template preparation in background while evaluation runs.
    */
-  async generateAndExport(input: GeneratePresentationInput, outputPath?: string): Promise<{
+  async generateAndExport(
+    input: GeneratePresentationInput,
+    outputPath?: string,
+  ): Promise<{
     presentation: Presentation;
     exportPath: string;
   }> {
@@ -347,7 +350,10 @@ export class SlideHarness {
         presentation.slides = redesigned.slides;
       } else {
         const redesigned = await this.designerAgent.redesignSlides(
-          planResult.slides, failedIndices, presentation.slides, evalResult.feedback
+          planResult.slides,
+          failedIndices,
+          presentation.slides,
+          evalResult.feedback,
         );
         presentation.slides = redesigned.slides;
       }
@@ -400,7 +406,10 @@ export class SlideHarness {
 
     // 1. Check slide state directly
     presentation.slides.forEach((slide, idx) => {
-      if (slide.isValid === false || (slide.validationErrors && slide.validationErrors.length > 0)) {
+      if (
+        slide.isValid === false ||
+        (slide.validationErrors && slide.validationErrors.length > 0)
+      ) {
         failedIndices.add(idx);
       }
     });

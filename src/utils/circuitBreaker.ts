@@ -21,7 +21,7 @@ const defaultConfig: CircuitBreakerConfig = {
 
 /**
  * Circuit Breaker Pattern
- * 
+ *
  * Protects against cascading failures when an external service (LLM) is down.
  * States:
  *   - closed: Normal operation, requests pass through
@@ -45,10 +45,7 @@ export class CircuitBreaker {
    * Execute a function through the circuit breaker.
    * If circuit is open, immediately returns fallback.
    */
-  async execute<T>(
-    fn: () => Promise<T>,
-    fallback?: () => Promise<T>
-  ): Promise<T> {
+  async execute<T>(fn: () => Promise<T>, fallback?: () => Promise<T>): Promise<T> {
     // Check if circuit is open
     if (this.state === 'open') {
       if (Date.now() - this.lastFailureTime >= this.config.resetTimeoutMs) {
@@ -60,7 +57,9 @@ export class CircuitBreaker {
         if (fallback) {
           return fallback();
         }
-        throw new Error(`Circuit breaker open for ${this.name} (retry after ${Math.ceil((this.config.resetTimeoutMs - (Date.now() - this.lastFailureTime)) / 1000)}s)`);
+        throw new Error(
+          `Circuit breaker open for ${this.name} (retry after ${Math.ceil((this.config.resetTimeoutMs - (Date.now() - this.lastFailureTime)) / 1000)}s)`,
+        );
       }
     }
 

@@ -1,8 +1,7 @@
-import { Slide } from '../schemas/slide.schema';
-import { Presentation } from '../schemas/presentation.schema';
-import { DeckGuardrails } from '../harness/guardrails/deckGuardrails';
-import { SlideGuardrails } from '../harness/guardrails/slideGuardrails';
-import { FeedbackLoop } from '../harness/feedback/feedbackLoop';
+import type { Presentation } from '../schemas/presentation.schema';
+import type { DeckGuardrails } from '../harness/guardrails/deckGuardrails';
+import type { SlideGuardrails } from '../harness/guardrails/slideGuardrails';
+import type { FeedbackLoop } from '../harness/feedback/feedbackLoop';
 import { logger } from '../utils/logger';
 
 const log = logger.child('EvaluatorAgent');
@@ -23,7 +22,7 @@ export class EvaluatorAgent {
     deckGuardrails: DeckGuardrails,
     slideGuardrails: SlideGuardrails,
     feedbackLoop: FeedbackLoop,
-    maxRetries: number = 3
+    maxRetries: number = 3,
   ) {
     this.deckGuardrails = deckGuardrails;
     this.slideGuardrails = slideGuardrails;
@@ -34,7 +33,7 @@ export class EvaluatorAgent {
   async evaluate(presentation: Presentation, attempt: number = 1): Promise<EvaluatorResult> {
     log.info('Evaluating presentation...', {
       slideCount: presentation.slides.length,
-      attempt
+      attempt,
     });
 
     const feedback: string[] = [];
@@ -46,7 +45,7 @@ export class EvaluatorAgent {
       for (let i = 0; i < slideValidation.results.length; i++) {
         const result = slideValidation.results[i];
         if (!result.passed) {
-          const slideErrors = result.errors.map(e => `Slide ${i + 1}: ${e}`);
+          const slideErrors = result.errors.map((e) => `Slide ${i + 1}: ${e}`);
           errors.push(...slideErrors);
         }
       }
@@ -62,7 +61,10 @@ export class EvaluatorAgent {
     const approved = errors.length === 0;
 
     if (!approved) {
-      log.warn('Presentation not approved', { errorCount: errors.length, feedbackCount: feedback.length });
+      log.warn('Presentation not approved', {
+        errorCount: errors.length,
+        feedbackCount: feedback.length,
+      });
     } else {
       log.info('Presentation approved');
     }

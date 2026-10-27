@@ -1,14 +1,10 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { ConcurrencyPool, runWithConcurrency } from '../concurrency';
 
 describe('ConcurrencyPool', () => {
   it('should run all tasks and return ordered results', async () => {
     const pool = new ConcurrencyPool({ concurrency: 2 });
-    const tasks = [
-      async () => 'task1',
-      async () => 'task2',
-      async () => 'task3',
-    ];
+    const tasks = [async () => 'task1', async () => 'task2', async () => 'task3'];
 
     const results = await pool.runBatch(tasks);
 
@@ -27,7 +23,7 @@ describe('ConcurrencyPool', () => {
     const tasks = Array.from({ length: 5 }, (_, i) => async () => {
       activeCount++;
       maxObservedActive = Math.max(maxObservedActive, activeCount);
-      await new Promise(r => setTimeout(r, 20));
+      await new Promise((r) => setTimeout(r, 20));
       activeCount--;
       return i;
     });
@@ -41,7 +37,9 @@ describe('ConcurrencyPool', () => {
     const pool = new ConcurrencyPool({ concurrency: 2 });
     const tasks = [
       async () => 'success',
-      async () => { throw new Error('fail'); },
+      async () => {
+        throw new Error('fail');
+      },
     ];
 
     const results = await pool.runBatch(tasks);
@@ -78,6 +76,6 @@ describe('ConcurrencyPool', () => {
     const tasks = [async () => 'a', async () => 'b'];
     const results = await runWithConcurrency(tasks, 2);
 
-    expect(results.map(r => r.value)).toEqual(['a', 'b']);
+    expect(results.map((r) => r.value)).toEqual(['a', 'b']);
   });
 });

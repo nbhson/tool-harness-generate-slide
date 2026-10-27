@@ -23,7 +23,7 @@ function safeStringify(data: unknown): string {
   if (data === undefined) return '';
   if (data === null) return 'null';
   if (typeof data === 'string') return data;
-  
+
   if (data instanceof Error) {
     const info: Record<string, unknown> = {
       name: data.name,

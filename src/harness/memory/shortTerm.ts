@@ -1,4 +1,5 @@
-import { UserPreferences, defaultUserPreferences } from '../../schemas/userPreferences.schema';
+import type { UserPreferences } from '../../schemas/userPreferences.schema';
+import { defaultUserPreferences } from '../../schemas/userPreferences.schema';
 
 export interface SessionData {
   preferences: UserPreferences;

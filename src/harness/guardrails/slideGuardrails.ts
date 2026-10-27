@@ -1,4 +1,4 @@
-import { Slide, SlideContent } from '../../schemas/slide.schema';
+import type { Slide, SlideContent } from '../../schemas/slide.schema';
 import { logger } from '../../utils/logger';
 
 export interface SlideGuardrailResult {
@@ -54,19 +54,25 @@ export class SlideGuardrails {
         errors.push(`Title is too short (minimum ${this.config.minTitleLength} characters)`);
       }
       if (content.title.length > this.config.maxTitleLength) {
-        warnings.push(`Title is very long (${content.title.length} characters, recommended max ${this.config.maxTitleLength})`);
+        warnings.push(
+          `Title is very long (${content.title.length} characters, recommended max ${this.config.maxTitleLength})`,
+        );
       }
     }
 
     // Bullets validation
     if (content.bullets && content.bullets.length > this.config.maxBulletsPerSlide) {
-      errors.push(`Too many bullet points (${content.bullets.length}, max ${this.config.maxBulletsPerSlide})`);
+      errors.push(
+        `Too many bullet points (${content.bullets.length}, max ${this.config.maxBulletsPerSlide})`,
+      );
     }
 
     if (content.bullets) {
       content.bullets.forEach((bullet, idx) => {
         if (bullet.length > 3000) {
-          warnings.push(`Bullet ${idx + 1} is very long (${bullet.length} chars), recommend keeping under 400 chars for slide readability`);
+          warnings.push(
+            `Bullet ${idx + 1} is very long (${bullet.length} chars), recommend keeping under 400 chars for slide readability`,
+          );
         }
       });
     }
@@ -79,12 +85,16 @@ export class SlideGuardrails {
     ].join(' ');
 
     if (totalText.length > this.config.maxTextLength) {
-      errors.push(`Total text length exceeds ${this.config.maxTextLength} characters (got ${totalText.length})`);
+      errors.push(
+        `Total text length exceeds ${this.config.maxTextLength} characters (got ${totalText.length})`,
+      );
     }
 
     // Images validation
     if (content.visuals?.images && content.visuals.images.length > this.config.maxImages) {
-      errors.push(`Too many images (${content.visuals.images.length}, max ${this.config.maxImages})`);
+      errors.push(
+        `Too many images (${content.visuals.images.length}, max ${this.config.maxImages})`,
+      );
     }
 
     // Layout-specific validation
@@ -148,11 +158,11 @@ export class SlideGuardrails {
     return { errors, warnings };
   }
 
-  async validateSlides(slides: Slide[]): Promise<{ allPassed: boolean; results: SlideGuardrailResult[] }> {
+  async validateSlides(
+    slides: Slide[],
+  ): Promise<{ allPassed: boolean; results: SlideGuardrailResult[] }> {
     // Phase 12: Parallel validation
-    const results = await Promise.all(
-      slides.map(slide => this.validateSlide(slide))
-    );
+    const results = await Promise.all(slides.map((slide) => this.validateSlide(slide)));
 
     const allPassed = results.every((r) => r.passed);
 

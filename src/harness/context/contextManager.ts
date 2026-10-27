@@ -1,6 +1,6 @@
-import { Slide } from '../../schemas/slide.schema';
-import { WorkingMemory } from '../memory/workingMemory';
-import { ShortTermMemory } from '../memory/shortTerm';
+import type { Slide } from '../../schemas/slide.schema';
+import type { WorkingMemory } from '../memory/workingMemory';
+import type { ShortTermMemory } from '../memory/shortTerm';
 import { logger } from '../../utils/logger';
 
 export interface ContextPayload {
@@ -25,7 +25,12 @@ export class ContextManager {
     this.shortTermMemory = shortTermMemory;
   }
 
-  buildPlannerContext(input: { topic: string; outline?: string[]; language?: string; maxSlides?: number }): string {
+  buildPlannerContext(input: {
+    topic: string;
+    outline?: string[];
+    language?: string;
+    maxSlides?: number;
+  }): string {
     const sections: string[] = [];
 
     sections.push('=== PRESENTATION PLANNING CONTEXT ===');
@@ -52,7 +57,7 @@ export class ContextManager {
     slideIndex: number,
     totalSlides: number,
     slidePlan: { title: string; layout: string; bullets?: string[] },
-    previousSlidesSummary: string[]
+    previousSlidesSummary: string[],
   ): string {
     const sections: string[] = [];
 
@@ -73,7 +78,9 @@ export class ContextManager {
     }
 
     const prefs = this.shortTermMemory.getPreferences();
-    sections.push(`\nStyle: Modern, clean, professional`);
+    sections.push(`\nLanguage: ${prefs.language}`);
+    sections.push(`Available layouts: ${prefs.layouts.join(', ')}`);
+    sections.push(`Style: Modern, clean, professional`);
     sections.push(`Max bullets per slide: 7`);
     sections.push(`Min font size: 18px`);
 
