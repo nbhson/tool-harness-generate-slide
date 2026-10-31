@@ -1,4 +1,7 @@
 import { logger } from './logger';
+import os from 'os';
+import { Worker } from 'worker_threads';
+import { TextChunker } from './textChunker';
 import type { Presentation } from '../schemas/presentation.schema';
 
 const log = logger.child('WorkerPool');
@@ -43,18 +46,9 @@ export class WorkerPool {
   private isAvailable: boolean;
 
   constructor(maxWorkers?: number) {
-    this.maxWorkers = maxWorkers || Math.min(4, (require('os').cpus()?.length || 4) - 1);
-    this.isAvailable = false;
-
-    // Check if worker_threads is available
-    try {
-      require('worker_threads');
-      this.isAvailable = true;
-      log.info('Worker pool initialized', { maxWorkers: this.maxWorkers, available: true });
-    } catch {
-      log.warn('worker_threads not available, falling back to main thread');
-      this.isAvailable = false;
-    }
+    this.maxWorkers = maxWorkers || Math.min(4, (os.cpus()?.length || 4) - 1);
+    this.isAvailable = true;
+    log.info('Worker pool initialized', { maxWorkers: this.maxWorkers, available: true });
   }
 
   /**
@@ -67,9 +61,9 @@ export class WorkerPool {
     }
 
     try {
-      const { Worker } = require('worker_threads');
       return new Promise<T>((resolve, reject) => {
         const worker = new Worker(this.getWorkerScript(), {
+          eval: true,
           workerData: task,
         });
 
@@ -108,7 +102,6 @@ export class WorkerPool {
       case 'parse-json':
         return JSON.parse(task.data as string) as T;
       case 'chunk-text': {
-        const { TextChunker } = require('./textChunker');
         const chunker = new TextChunker();
         return chunker.chunk(task.data as string) as T;
       }
@@ -121,32 +114,36 @@ export class WorkerPool {
    * Run PPTX export on main thread
    */
   private async runPPTXExport(data: unknown): Promise<string> {
-    const { SlideExporter } = require('../harness/tools/slideExporter');
+    // Lazy import to avoid loading pptxgenjs unless an export is actually needed
+    const { SlideExporter } = await import('../harness/tools/slideExporter');
     const exporter = new SlideExporter();
     const { presentation, outputPath } = data as PptxExportTaskData;
     return exporter.exportPPTX(presentation, outputPath);
   }
 
   /**
-   * Get inline worker script as a data URL
+   * Build the worker script executed with `new Worker(code, { eval: true })`.
+   * Requires are resolved from this module's directory so the script works
+   * both from src (tsx) and from the compiled dist/ output.
    */
   private getWorkerScript(): string {
-    // Returns an inline worker script that processes tasks
-    const script = `
+    const srcDir = __dirname;
+    return `
       const { parentPort, workerData } = require('worker_threads');
-      
+      const path = require('path');
+      const srcDir = ${JSON.stringify(srcDir)};
+
       async function processTask(task) {
         switch (task.type) {
           case 'export-pptx': {
-            const { SlideExporter } = require('../harness/tools/slideExporter');
+            const { SlideExporter } = require(path.join(srcDir, '../harness/tools/slideExporter'));
             const exporter = new SlideExporter();
-            const result = await exporter.exportPPTX(task.data.presentation, task.data.outputPath);
-            return result;
+            return exporter.exportPPTX(task.data.presentation, task.data.outputPath);
           }
           case 'parse-json':
             return JSON.parse(task.data);
           case 'chunk-text': {
-            const { TextChunker } = require('./textChunker');
+            const { TextChunker } = require(path.join(srcDir, './textChunker'));
             const chunker = new TextChunker();
             return chunker.chunk(task.data);
           }
@@ -159,14 +156,6 @@ export class WorkerPool {
         .then(data => parentPort.postMessage({ success: true, data }))
         .catch(error => parentPort.postMessage({ success: false, error: error.message }));
     `;
-
-    // Write to a temp file and return path
-    const path = require('path');
-    const fs = require('fs');
-    const os = require('os');
-    const tmpPath = path.join(os.tmpdir(), `worker-${Date.now()}.js`);
-    fs.writeFileSync(tmpPath, script);
-    return tmpPath;
   }
 
   /**
