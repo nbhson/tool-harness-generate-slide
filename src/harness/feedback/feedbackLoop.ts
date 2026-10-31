@@ -50,7 +50,7 @@ export class FeedbackLoop {
     const maxRetries = 3;
     const shouldRetry = context.attempt < maxRetries;
 
-    let feedback = '';
+    let feedback: string;
     if (context.error.includes('title')) {
       feedback = 'Ensure the slide has a clear, descriptive title between 3-100 characters.';
     } else if (context.error.includes('bullet')) {

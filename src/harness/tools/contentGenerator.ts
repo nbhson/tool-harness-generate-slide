@@ -605,7 +605,7 @@ EXAMPLE OUTPUT for flowchart layout:
     } catch (fetchError) {
       const msg = fetchError instanceof Error ? fetchError.message : String(fetchError);
       log.error('LLM connection failed', { url, error: msg });
-      throw new Error(`Cannot connect to LLM at ${url}: ${msg}`);
+      throw new Error(`Cannot connect to LLM at ${url}: ${msg}`, { cause: fetchError });
     }
 
     if (!response.ok) {
@@ -642,7 +642,9 @@ EXAMPLE OUTPUT for flowchart layout:
         return await this.extractContent(fallbackResponse, onStreamChunk);
       } catch (fbError) {
         if (fbError instanceof Error && fbError.message.startsWith('Both models')) throw fbError;
-        throw new Error(`Primary: ${response.status} - ${errorBody}. Fallback error: ${fbError}`);
+        throw new Error(`Primary: ${response.status} - ${errorBody}. Fallback error: ${fbError}`, {
+          cause: fbError,
+        });
       }
     }
 
