@@ -141,6 +141,14 @@ export default [
     },
   },
 
+  // CLI entry point prints user-facing output directly (quiet mode is handled in code)
+  {
+    files: ['src/index.ts'],
+    rules: {
+      'no-console': 'off',
+    },
+  },
+
   // Disable some rules that conflict with Prettier
   prettier,
 
