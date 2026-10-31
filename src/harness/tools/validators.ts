@@ -21,9 +21,11 @@ export class Validators {
       errors.push('Missing <body> tag');
     }
 
-    // Check for unclosed tags
-    const openTags = (html.match(/<[a-z]+[^/]*>/gi) || []).length;
-    const closeTags = (html.match(/<\/[a-z]+>/gi) || []).length;
+    // Check for unclosed tags (exclude closing and self-closing tags from the open count)
+    const openTags = (html.match(/<([a-z][a-z0-9]*)(?:\s[^>]*)?>/gi) || []).filter(
+      (tag) => !tag.startsWith('</') && !tag.endsWith('/>'),
+    ).length;
+    const closeTags = (html.match(/<\/[a-z][a-z0-9]*>/gi) || []).length;
     if (openTags !== closeTags) {
       errors.push(`Mismatched HTML tags: ${openTags} open, ${closeTags} close`);
     }
