@@ -542,18 +542,20 @@ npm test
 npm test -- --grep "guardrails"      # Guardrails tests
 npm test -- --grep "agents"          # Agent tests
 npm test -- --grep "Visual Export"   # Visual export integration tests
-
-# Demo tất cả layouts
-npx tsx test-new-layouts.ts
 ```
 
 ### Test Structure
 
-| File                             | Mô tả                                             |
-| -------------------------------- | ------------------------------------------------- |
-| `__tests__/visualExport.test.ts` | Visual export integration (từng layout × theme)   |
-| `__tests__/overlapTest.test.ts`  | Phát hiện element overlap trên slide              |
-| `test-new-layouts.ts`            | Demo script sinh tất cả layouts (không phải test) |
+Unit tests nằm cạnh module trong các thư mục `__tests__/` (utils, agents, harness/guardrails, harness/memory, harness/feedback, harness/permissions, harness/tools) — tổng cộng **23 test files, 157 tests**. Các file đáng chú ý:
+
+| File                                              | Mô tả                                              |
+| ------------------------------------------------- | -------------------------------------------------- |
+| `src/harness/tools/__tests__/visualExport.test.ts` | Visual export integration (từng layout × theme)    |
+| `src/harness/tools/__tests__/overlapTest.test.ts`  | Phát hiện element overlap trên slide               |
+| `src/harness/guardrails/__tests__/*.test.ts`       | Input / Slide / Deck / Output guardrails           |
+| `src/harness/memory/__tests__/*.test.ts`           | Cache, working / short-term / long-term memory     |
+| `src/utils/__tests__/*.test.ts`                    | Chunker, validators, errors, worker pool, concurrency |
+| `src/__tests__/fixtures.ts`                        | Slide/Presentation fixtures dùng chung cho unit tests |
 
 ---
 
