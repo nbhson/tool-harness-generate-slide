@@ -42,6 +42,19 @@ const THEMES: Record<string, SlideTheme> = {
   tech: techTheme as unknown as SlideTheme,
 };
 
+export type HarnessStage =
+  | 'planning'
+  | 'design'
+  | 'assembly'
+  | 'evaluation'
+  | 'retry'
+  | 'export';
+
+/** Hooks để UI (CLI) theo dõi tiến độ từng stage của pipeline. */
+export interface GenerateHooks {
+  onStage?: (stage: HarnessStage, detail?: string) => void;
+}
+
 export interface HarnessConfig {
   baseUrl: string;
   apiKey?: string;
@@ -160,7 +173,13 @@ export class SlideHarness {
     });
   }
 
-  async generate(input: GeneratePresentationInput): Promise<Presentation> {
+  async generate(
+    input: GeneratePresentationInput,
+    hooks: GenerateHooks = {},
+  ): Promise<Presentation> {
+    const emit = (stage: HarnessStage, detail?: string): void => {
+      hooks.onStage?.(stage, detail);
+    };
     const startTime = Date.now();
     log.info('Starting presentation generation', { topic: input.topic });
 
@@ -175,6 +194,7 @@ export class SlideHarness {
     this.shortTermMemory.setCurrentTopic(input.topic);
 
     // Step 1: Planning
+    emit('planning');
     log.info('Step 1: Planning...');
     const planResult = await this.plannerAgent.plan({
       topic: input.topic,
@@ -188,10 +208,12 @@ export class SlideHarness {
     }
 
     // Step 2: Designing
+    emit('design', `${planResult.slides.length} slides`);
     log.info('Step 2: Designing slides...');
     const designResult = await this.designerAgent.designSlides(planResult.slides);
 
     // Step 3: Assembling presentation
+    emit('assembly');
     log.info('Step 3: Assembling presentation...');
     const presentation: Presentation = {
       id: generateId(),
@@ -211,12 +233,14 @@ export class SlideHarness {
     };
 
     // Step 4: Evaluation with smart retry
+    emit('evaluation');
     log.info('Step 4: Evaluating...');
     let evalResult = await this.evaluatorAgent.evaluate(presentation, 1);
 
     for (let attempt = 2; attempt <= 3; attempt++) {
       if (evalResult.approved) break;
 
+      emit('retry', `attempt ${attempt}/3`);
       log.info('Presentation needs retry, applying smart feedback...', { attempt });
 
       const retryResult = await this.feedbackLoop.onValidationFailure({
@@ -288,10 +312,14 @@ export class SlideHarness {
   async generateAndExport(
     input: GeneratePresentationInput,
     outputPath?: string,
+    hooks: GenerateHooks = {},
   ): Promise<{
     presentation: Presentation;
     exportPath: string;
   }> {
+    const emit = (stage: HarnessStage, detail?: string): void => {
+      hooks.onStage?.(stage, detail);
+    };
     const startTime = Date.now();
     log.info('Starting pipeline: generate + export', { topic: input.topic });
 
@@ -305,6 +333,7 @@ export class SlideHarness {
     this.shortTermMemory.setCurrentTopic(input.topic);
 
     // Step 1: Planning
+    emit('planning');
     const planResult = await this.plannerAgent.plan({
       topic: input.topic,
       outline: input.outline,
@@ -317,9 +346,11 @@ export class SlideHarness {
     }
 
     // Step 2: Design (parallel batches)
+    emit('design', `${planResult.slides.length} slides`);
     const designResult = await this.designerAgent.designSlides(planResult.slides);
 
     // Step 3: Assemble
+    emit('assembly');
     const presentation: Presentation = {
       id: generateId(),
       title: input.topic,
@@ -338,10 +369,13 @@ export class SlideHarness {
     };
 
     // Step 4: Evaluation (with smart retry)
+    emit('evaluation');
     let evalResult = await this.evaluatorAgent.evaluate(presentation, 1);
 
     for (let attempt = 2; attempt <= 3; attempt++) {
       if (evalResult.approved) break;
+
+      emit('retry', `attempt ${attempt}/3`);
 
       const failedIndices = this.identifyFailedSlides(presentation, evalResult.errors);
 
@@ -367,6 +401,7 @@ export class SlideHarness {
     presentation.validationErrors = evalResult.errors;
 
     // Step 5: Export
+    emit('export');
     const exportPath = outputPath || `${input.topic.replace(/\s+/g, '_')}.pptx`;
     const outputValidation = await this.outputGuardrails.validatePresentation(presentation);
     if (!outputValidation.passed) {
