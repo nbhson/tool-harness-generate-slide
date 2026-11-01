@@ -63,6 +63,9 @@ npm install
 # Tạo slide từ text
 npx tsx src/index.ts generate -i "Giới thiệu sản phẩm ABC" -t modern
 
+# Chỉ validate input + xem plan (không gọi LLM, không ghi file)
+npx tsx src/index.ts generate -i "Giới thiệu sản phẩm ABC" --dry-run
+
 # Tạo slide từ file markdown
 npx tsx src/index.ts generate -i "Report" -f content.md -t corporate -o report.pptx
 
@@ -87,7 +90,26 @@ npx tsx src/index.ts generate \
 | `-m, --max-slides`   | Số slide tối đa                                                            | 20                |
 | `-a, --aspect-ratio` | Tỷ lệ khung hình: 16:9, 4:3                                                | 16:9              |
 | `-o, --output`       | Đường dẫn file output                                                      | presentation.pptx |
+| `--dry-run`          | Chỉ validate input + in plan, không gọi LLM, không ghi file                | tắt               |
 | `--no-fallback`      | Tắt auto-fallback khi LLM primary lỗi                                      | enabled (bật)     |
+| `--verbose`          | Bật DEBUG log                                                              | tắt               |
+| `--quiet`            | Chỉ in lỗi                                                                 | tắt               |
+
+Xem đầy đủ kèm examples: `npx tsx src/index.ts --help`
+
+#### Exit codes
+
+CLI phân loại exit code theo nhóm lỗi để dễ dùng trong script/CI:
+
+| Code | Ý nghĩa                                                                 |
+| ---- | ----------------------------------------------------------------------- |
+| `0`  | Thành công (kể cả `--dry-run`)                                          |
+| `1`  | Lỗi không xác định                                                      |
+| `2`  | Lỗi input: option sai, file `--file` không tồn tại, guardrails chặn     |
+| `3`  | Lỗi LLM: không kết nối được, cả primary lẫn fallback model đều fail     |
+| `4`  | Lỗi export: không ghi được file PPTX                                    |
+
+Message lỗi luôn kèm gợi ý hành động (💡) — ví dụ lỗi LLM gợi ý kiểm tra `LLM_BASE_URL`/`LLM_API_KEY` trong `.env`.
 
 ### API Usage
 
@@ -546,16 +568,30 @@ npm test -- --grep "Visual Export"   # Visual export integration tests
 
 ### Test Structure
 
-Unit tests nằm cạnh module trong các thư mục `__tests__/` (utils, agents, harness/guardrails, harness/memory, harness/feedback, harness/permissions, harness/tools) — tổng cộng **23 test files, 157 tests**. Các file đáng chú ý:
+Unit tests nằm cạnh module trong các thư mục `__tests__/` (utils, agents, harness/guardrails, harness/memory, harness/feedback, harness/permissions, harness/tools) — tổng cộng **29 test files, 205 tests**. Các file đáng chú ý:
 
 | File                                              | Mô tả                                              |
 | ------------------------------------------------- | -------------------------------------------------- |
+| `src/harness.integration.test.ts`                 | Integration pipeline SlideHarness với mock LLM (plan → design → evaluate → export, smart retry, metrics) |
+| `src/worker.integration.test.ts`                  | Worker thread path thật qua `dist/` (chunk-text, parse-json, export-pptx) — tự skip nếu chưa `npm run build` |
+| `src/harness/tools/__tests__/contentGenerator.test.ts` | ContentGenerator với mock `node-fetch`: outline, chunking, SSE stream, fallback model |
+| `src/agents/__tests__/plannerAgent.test.ts`       | PlannerAgent với mock deps                         |
+| `src/agents/__tests__/evaluatorAgent.test.ts`     | EvaluatorAgent với mock guardrails                 |
 | `src/harness/tools/__tests__/visualExport.test.ts` | Visual export integration (từng layout × theme)    |
 | `src/harness/tools/__tests__/overlapTest.test.ts`  | Phát hiện element overlap trên slide               |
 | `src/harness/guardrails/__tests__/*.test.ts`       | Input / Slide / Deck / Output guardrails           |
 | `src/harness/memory/__tests__/*.test.ts`           | Cache, working / short-term / long-term memory     |
-| `src/utils/__tests__/*.test.ts`                    | Chunker, validators, errors, worker pool, concurrency |
+| `src/utils/__tests__/*.test.ts`                    | Chunker, validators, errors, exit codes, worker pool, concurrency |
 | `src/__tests__/fixtures.ts`                        | Slide/Presentation fixtures dùng chung cho unit tests |
+
+### Coverage
+
+```bash
+npm run coverage        # vitest run --coverage (cần @vitest/coverage-v8)
+npm run build && npm test   # chạy đầy đủ kèm worker thread integration test
+```
+
+Coverage hiện tại (sau khi phủ agents + ContentGenerator + harness pipeline): **~63% statements / ~44% branches / ~73% functions**. Các điểm chưa phủ chính: `slideExporter` render chi tiết từng theme (đã có visual/overlap test bù), `contextManager`, `cache.ts`, `helpers.ts`.
 
 ---
 

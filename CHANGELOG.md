@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2026-11-01
+
+### Added
+
+- CLI: `--dry-run` — validate input và in plan (theme, ngôn ngữ, số slide, output) mà không gọi LLM và không ghi file
+- CLI: exit codes phân loại theo nhóm lỗi — `0` thành công, `1` lỗi không xác định, `2` lỗi input (option sai, file không tồn tại, guardrails chặn), `3` lỗi LLM, `4` lỗi export; message lỗi kèm gợi ý hành động
+- CLI: help text đầy đủ với examples, bảng exit codes và biến môi trường (`--help`)
+- CLI: progress per stage (`[1/5] Planning...`, `[2/5] Design...`...) qua `onStage` hooks mới của `SlideHarness.generate()` / `generateAndExport()` (additive, không phá API cũ)
+- Tests: `@vitest/coverage-v8` + script `npm run coverage`; test suite tăng từ 157 → 205 tests / 29 files
+- Tests: phủ `PlannerAgent`, `EvaluatorAgent`, `ContentGenerator` (mock module `node-fetch`: outline, chunking, SSE stream, fallback model, circuit breaker), integration test `SlideHarness` pipeline với mock LLM (generate/export/smart retry/metrics), integration test worker thread path thật qua `dist/` (tự skip nếu chưa `npm run build`)
+
+### Notes
+
+- Worker thread integration test chỉ chạy khi có `dist/`: `npm run build && npm test`
+
 ## [1.1.0] - 2026-10-31
 
 ### Fixed
