@@ -2,8 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { execFile } from 'child_process';
 import { promisify } from 'util';
 import { existsSync } from 'fs';
-import { tmpdir } from 'os';
-import { join, resolve } from 'path';
+import { resolve } from 'path';
 
 const execFileAsync = promisify(execFile);
 
