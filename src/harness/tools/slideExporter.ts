@@ -858,8 +858,8 @@ export class SlideExporter {
     const primaryHex = this.hex(colors.primary);
     const textHex = this.hex(textColor);
 
-    let headers: string[] = [];
-    let rows: string[][] = [];
+    let headers: string[];
+    let rows: string[][];
 
     if (
       content.table &&
